@@ -20,7 +20,7 @@ ENV WINEDEBUG=fixme-all
 
 RUN winetricks msxml6
 
-COPY game/feeding_fenzy /root/feeding_fenzy
+COPY game/feeding_frenzy /root/feeding_frenzy
 COPY startup.sh /root/startup.sh
 RUN chmod gou+x /root/startup.sh
 
