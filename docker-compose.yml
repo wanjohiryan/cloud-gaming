@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  appvm:
+    build:
+      context: ./appvm
+      dockerfile: Dockerfile
+    restart: on-failure
+    env_file:
+      - .env
+    volumes:
+      - ./apps:/appvm/apps
+      - winecfg:/root/.wine
+    ports:
+      - "9001:9001"
+  stream_relayer:
+    build:
+      context: ./stream_relayer
+      dockerfile: Dockerfile
+    restart: on-failure
+    depends_on:
+      - redis
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+volumes:
+  winecfg:
+  redis_data:
