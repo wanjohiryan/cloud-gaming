@@ -26,30 +26,40 @@ type StreamRelayer struct {
 	screenHeight  float32
 }
 
-func NewStreamRelayer(screenWidth float32, screenHeight float32) *StreamRelayer {
+func NewStreamRelayer(screenWidth float32, screenHeight float32) (*StreamRelayer, error) {
 	s := &StreamRelayer{
-		videoListener: newUDPListener(VideoRTPPort),
-		audioListener: newUDPListener(AudioRTPPort),
-		VideoStream:   make(chan *rtp.Packet, 1),
-		AudioStream:   make(chan *rtp.Packet, 1),
-		AppEvents:     make(chan Packet, 1),
-		screenWidth:   screenWidth,
-		screenHeight:  screenHeight,
+		VideoStream:  make(chan *rtp.Packet, 1),
+		AudioStream:  make(chan *rtp.Packet, 1),
+		AppEvents:    make(chan Packet, 1),
+		screenWidth:  screenWidth,
+		screenHeight: screenHeight,
 	}
 
-	return s
+	var err error
+
+	s.videoListener, err = newUDPListener(VideoRTPPort)
+	if err != nil {
+		return nil, err
+	}
+
+	s.audioListener, err = newUDPListener(AudioRTPPort)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
-func (s *StreamRelayer) Start() {
-	log.Println("Start streaming..")
+func (s *StreamRelayer) Start() error {
+	log.Println("Start relaying streams..")
 
 	la, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf(":%d", WineConnPort))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	ln, err := net.ListenTCP("tcp", la)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	for {
@@ -188,14 +198,14 @@ func (s *StreamRelayer) simulateMouseEvent(jsonPayload string, mouseState int) {
 	}
 }
 
-func newUDPListener(rtpPort int) *net.UDPConn {
+func newUDPListener(rtpPort int) (*net.UDPConn, error) {
 	ln, err := net.ListenUDP("udp", &net.UDPAddr{
 		IP:   net.ParseIP("localhost"),
 		Port: rtpPort,
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return ln
+	return ln, nil
 }

@@ -19,11 +19,13 @@ type RedisPubSub struct {
 
 var _ PubSub = (*RedisPubSub)(nil)
 
+type MessageType string
+
 type Message struct {
-	Sender    string `json:"sender"`
-	Recipient string `json:"recipient"`
-	Type      string `json:"type"`
-	Data      string `json:"data"`
+	Sender    string      `json:"sender"`
+	Recipient string      `json:"recipient"`
+	Type      MessageType `json:"type"`
+	Data      string      `json:"data"`
 }
 
 type Channel interface {
