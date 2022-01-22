@@ -1,11 +1,14 @@
-package main
+package stream
 
 import (
+	"container/ring"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"time"
+
+	"streamer/constants"
 
 	"github.com/pion/rtp"
 )
@@ -26,7 +29,7 @@ type StreamRelayer struct {
 	screenHeight  float32
 }
 
-func NewStreamRelayer(screenWidth float32, screenHeight float32) (*StreamRelayer, error) {
+func NewStreamRelayer(videoRelayPort, audioRelayPort int, screenWidth, screenHeight float32) (*StreamRelayer, error) {
 	s := &StreamRelayer{
 		VideoStream:  make(chan *rtp.Packet, 1),
 		AudioStream:  make(chan *rtp.Packet, 1),
@@ -37,12 +40,12 @@ func NewStreamRelayer(screenWidth float32, screenHeight float32) (*StreamRelayer
 
 	var err error
 
-	s.videoListener, err = newUDPListener(VideoRTPPort)
+	s.videoListener, err = newUDPListener(videoRelayPort)
 	if err != nil {
 		return nil, err
 	}
 
-	s.audioListener, err = newUDPListener(AudioRTPPort)
+	s.audioListener, err = newUDPListener(audioRelayPort)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +56,7 @@ func NewStreamRelayer(screenWidth float32, screenHeight float32) (*StreamRelayer
 func (s *StreamRelayer) Start() error {
 	log.Println("Start relaying streams..")
 
-	la, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf(":%d", WineConnPort))
+	la, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf(":%d", constants.WineConnPort))
 	if err != nil {
 		return err
 	}
@@ -62,51 +65,78 @@ func (s *StreamRelayer) Start() error {
 		return err
 	}
 
-	for {
-		log.Printf("Waiting for syncinput to connect on port %d\n", WineConnPort)
+	wineConnected := make(chan struct{})
 
-		conn, err := ln.AcceptTCP()
-		if err != nil {
-			log.Println("Couldn't accept syncinput connection", err)
-			continue
+	go func() {
+		for {
+			log.Printf("Waiting for syncinput to connect on port :%d\n", constants.WineConnPort)
+
+			conn, err := ln.AcceptTCP()
+			if err != nil {
+				log.Println("Couldn't accept syncinput connection", err)
+				continue
+			}
+
+			err = conn.SetKeepAlive(true)
+			if err != nil {
+				log.Println("Couldn't set keepAlive", err)
+				continue
+			}
+			err = conn.SetKeepAlivePeriod(10 * time.Second)
+			if err != nil {
+				log.Println("Couldn't set keepAlive period", err)
+				continue
+			}
+
+			s.wineConn = conn
+			wineConnected <- struct{}{}
+
+			log.Println("Successfully set up syncinput connection")
 		}
-
-		_ = conn.SetKeepAlive(true)
-		_ = conn.SetKeepAlivePeriod(10 * time.Second)
-
-		// Synchronization maybe needed
-		s.wineConn = conn
-
-		log.Println("Successfully set up syncinput connection")
-
-		go s.healthCheckVM()
-		go s.handleAppEvents()
-		go s.relayStream(s.videoListener, s.VideoStream)
-		go s.relayStream(s.audioListener, s.AudioStream)
-	}
-}
-
-func (s *StreamRelayer) relayStream(stream *net.UDPConn, output chan<- *rtp.Packet) {
-	defer func() {
-		_ = stream.Close()
 	}()
 
-	inboundRTPPacket := make([]byte, 1500)
+	<-wineConnected
+
+	go s.healthCheckVM()
+	go s.handleAppEvents()
+	go s.relayStream(s.videoListener, s.VideoStream)
+	go s.relayStream(s.audioListener, s.AudioStream)
+
+	return nil
+}
+
+func (s *StreamRelayer) relayStream(listener *net.UDPConn, output chan<- *rtp.Packet) {
+	defer func() {
+		_ = listener.Close()
+	}()
+
+	r := ring.New(120)
+
+	n := r.Len()
+	for i := 0; i < n; i++ {
+		r.Value = make([]byte, 1500)
+		r = r.Next()
+	}
 
 	for {
-		n, _, err := stream.ReadFrom(inboundRTPPacket)
+		inboundRTPPacket := r.Value.([]byte)
+		r = r.Next()
+
+		n, _, err := listener.ReadFrom(inboundRTPPacket)
 		if err != nil {
 			log.Println("Error during read RTP packet", err)
 			continue
 		}
 
-		var packet *rtp.Packet
+		fmt.Println("Got a rtp packet", n)
+
+		var packet rtp.Packet
 		if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
 			log.Println("Error during unmarshalling RTP packet", err)
 			continue
 		}
 
-		output <- packet
+		output <- &packet
 	}
 }
 
@@ -128,15 +158,15 @@ func (s *StreamRelayer) healthCheckVM() {
 func (s *StreamRelayer) handleAppEvents() {
 	for packet := range s.AppEvents {
 		switch packet.Type {
-		case KeyUp:
+		case constants.KeyUp:
 			s.simulateKey(packet.Data, 0)
-		case KeyDown:
+		case constants.KeyDown:
 			s.simulateKey(packet.Data, 1)
-		case MouseMove:
+		case constants.MouseMove:
 			s.simulateMouseEvent(packet.Data, 0)
-		case MouseDown:
+		case constants.MouseDown:
 			s.simulateMouseEvent(packet.Data, 1)
-		case MouseUp:
+		case constants.MouseUp:
 			s.simulateMouseEvent(packet.Data, 2)
 		}
 	}

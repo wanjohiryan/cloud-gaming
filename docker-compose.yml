@@ -7,17 +7,17 @@ services:
       dockerfile: Dockerfile
     restart: on-failure
     env_file:
-      - .env
+      - .env.appvm
     volumes:
       - ./apps:/appvm/apps
       - winecfg:/root/.wine
-    ports:
-      - "9001:9001"
   stream_relayer:
     build:
       context: ./stream_relayer
       dockerfile: Dockerfile
     restart: on-failure
+    env_file:
+      - .env.relayer
     depends_on:
       - redis
   redis:

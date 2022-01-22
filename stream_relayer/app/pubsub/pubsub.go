@@ -57,6 +57,8 @@ func NewRedisPubSub(addr, pwd string) (*RedisPubSub, error) {
 }
 
 func (p *RedisPubSub) Subscribe(channel string) Channel {
+	log.Println("Subscribed to channel", channel)
+
 	s := p.client.Subscribe(context.Background(), channel)
 
 	return &RedisChannel{

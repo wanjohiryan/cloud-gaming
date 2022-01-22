@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"streamer/pkg/utils"
+	"streamer/utils"
 
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v3"
@@ -34,6 +34,8 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback) (string, error)
 			w.StopClient()
 		}
 	}()
+
+	log.Println("Start WebRTC..")
 
 	conn, err := webrtc.NewPeerConnection(webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{

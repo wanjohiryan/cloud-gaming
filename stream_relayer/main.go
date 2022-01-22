@@ -6,8 +6,9 @@ import (
 	"os"
 	"strconv"
 
-	"streamer/pkg/pubsub"
-
+	"streamer/app/pubsub"
+	"streamer/constants"
+	"streamer/pkg/stream"
 	"streamer/pkg/webrtc"
 )
 
@@ -29,13 +30,24 @@ func MustStrToFloat32(val string) float32 {
 	return float32(fVal)
 }
 
+func MustStrToInt(val string) int {
+	iVal, err := strconv.ParseInt(val, 10, 32)
+	if err != nil {
+		panic(fmt.Sprintf("Couldn't convert str to int: %s", err))
+	}
+
+	return int(iVal)
+}
+
 func main() {
-	ID := MustEnv("id")
-	screenWidth := MustStrToFloat32(MustEnv("screenwidth"))
-	screenHeight := MustStrToFloat32(MustEnv("screenheight"))
+	ID := MustEnv("ID")
+	screenWidth := MustStrToFloat32(MustEnv("SCREEN_WIDTH"))
+	screenHeight := MustStrToFloat32(MustEnv("SCREEN_HEIGHT"))
+	videoRelayPort := MustStrToInt(MustEnv("VIDEO_RELAY_PORT"))
+	audioRelayPort := MustStrToInt(MustEnv("AUDIO_RELAY_PORT"))
 
 	// Start relaying streams
-	relayer, err := NewStreamRelayer(screenWidth, screenHeight)
+	relayer, err := stream.NewStreamRelayer(videoRelayPort, audioRelayPort, screenWidth, screenHeight)
 	if err != nil {
 		panic(fmt.Sprintf("Couldn't create a stream relayer %s", err))
 	}
@@ -59,9 +71,9 @@ func main() {
 	webrtcClient := webrtc.NewWebRTC()
 	offer, err := webrtcClient.StartClient("vpx", func(candidate string) {
 		err := channel.Publish(&pubsub.Message{
-			Sender:    Relayer,
-			Recipient: Coordinator,
-			Type:      IceCandidateMessage,
+			Sender:    constants.Relayer,
+			Recipient: constants.Coordinator,
+			Type:      constants.IceCandidateMessage,
 			Data:      candidate,
 		})
 		if err != nil {
@@ -69,13 +81,13 @@ func main() {
 		}
 	})
 	if err != nil {
-		panic(fmt.Sprintf("Couldn't create a pubsub %s", err))
+		panic(fmt.Sprintf("Couldn't start webrtc client %s", err))
 	}
 
 	err = channel.Publish(&pubsub.Message{
-		Sender:    Relayer,
-		Recipient: Coordinator,
-		Type:      SDPMessage,
+		Sender:    constants.Relayer,
+		Recipient: constants.Coordinator,
+		Type:      constants.SDPMessage,
 		Data:      offer,
 	})
 	if err != nil {
@@ -83,13 +95,17 @@ func main() {
 	}
 
 	channel.OnMessage(func(msg *pubsub.Message) {
+		if msg.Recipient != constants.Relayer {
+			return
+		}
+
 		switch msg.Type {
-		case SDPMessage:
+		case constants.SDPMessage:
 			err := webrtcClient.SetRemoteSDP(msg.Data)
 			if err != nil {
 				panic(fmt.Sprintf("Couldn't set remote SDP %s", err))
 			}
-		case IceCandidateMessage:
+		case constants.IceCandidateMessage:
 			err := webrtcClient.AddCandidate(msg.Data)
 			if err != nil {
 				panic(fmt.Sprintf("Couldn't set ICE candidate %s", err))

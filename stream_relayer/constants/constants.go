@@ -1,9 +1,9 @@
-package main
+package constants
 
-import "streamer/pkg/pubsub"
+import (
+	"streamer/app/pubsub"
+)
 
-const VideoRTPPort = 5004
-const AudioRTPPort = 4004
 const WineConnPort = 9090
 const KeyUp = "KEYUP"
 const KeyDown = "KEYDOWN"

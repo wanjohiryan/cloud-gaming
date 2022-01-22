@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <ctime>
 #include <chrono>
+
 using namespace std;
 
 int screenWidth, screenHeight;
@@ -15,15 +16,20 @@ bool done;
 HWND hwnd;
 char *winTitle;
 char dockerHost[20];
-string hardcodeIP;
-bool isMac;
-bool isWindows;
+string hostAddr;
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
 const byte MOUSE_UP = 2;
 const byte KEY_UP = 0;
 const byte KEY_DOWN = 1;
+
+string hostToIp(const string& host) {
+    hostent* hostname = gethostbyname(host.c_str());
+    if (hostname)
+        return string(inet_ntoa(**(in_addr**)hostname->h_addr_list));
+    return host;
+}
 
 int clientConnect()
 {
@@ -36,46 +42,7 @@ int clientConnect()
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
-    if (isMac)
-    {
-        // Mac doesn't have host mode in docker, hence need to get local docker address
-        char ip[100];
-        struct hostent *he;
-        struct in_addr **addr_list;
-        if ((he = gethostbyname("host.docker.internal")) == NULL)
-        {
-            //gethostbyname failed
-            printf("gethostbyname failed : %d", WSAGetLastError());
-            return 1;
-        }
-        //Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
-        addr_list = (struct in_addr **)he->h_addr_list;
-        for (int i = 0; addr_list[i] != NULL; i++)
-        {
-            //Return the first one;
-            strcpy(ip, inet_ntoa(*addr_list[i]));
-        }
-
-        cout << "using host docker internal" << endl;
-        cout << "ip from hostname: " << ip << endl;
-        addr.sin_addr.s_addr = inet_addr(ip);
-    }
-    else if (isWindows)
-    {
-        if (hardcodeIP != "")
-        {
-            cout << "Running with hardcode IP" << hardcodeIP << endl;
-            addr.sin_addr.s_addr = inet_addr(hardcodeIP.c_str());
-        }
-        else
-        {
-            addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-        }
-    }
-    else
-    {
-        addr.sin_addr.s_addr = INADDR_ANY;
-    }
+    addr.sin_addr.s_addr = inet_addr(hostToIp(hostAddr).c_str());
 
     cout << "Connecting to server!" << endl;
     connect(server, reinterpret_cast<SOCKADDR *>(&addr), sizeof(addr));
@@ -121,7 +88,7 @@ HWND getWindowByTitle(char *pattern)
             return hwnd;
         }
     } while (hwnd != 0);
-    cout << "Not found";
+    cout << "Not found" << endl;
     return hwnd; //Ignore that
 }
 
@@ -346,8 +313,6 @@ int main(int argc, char *argv[])
 {
     winTitle = (char *)"Notepad";
     bool isDxGame = false;
-    isMac = false;
-    isWindows = false;
     cout << "args" << endl;
     if (argc > 1)
     {
@@ -364,21 +329,7 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
-        cout << argv[3] << endl;
-        if (strcmp(argv[3], "host.docker.internal") == 0)
-        {
-            isMac = true;
-            cout << "Running syncinput on Mac";
-        }
-        else if (strcmp(argv[3], "windows") == 0)
-        {
-            isWindows = true;
-            cout << "Running syncinput on Windows";
-        }
-    }
-    if (argc > 4)
-    {
-        hardcodeIP = argv[4];
+        hostAddr = argv[3];
     }
 
     server = clientConnect();
@@ -388,8 +339,7 @@ int main(int argc, char *argv[])
     getDesktopResolution(screenWidth, screenHeight);
     cout << "width " << screenWidth << " "
          << "height " << screenHeight << endl;
-    cout << "isMac " << isMac << " isWindows " << isWindows << endl;
-    cout << "hardcode IP " << hardcodeIP << endl;
+    cout << "host address " << hostAddr << endl;
 
     formatWindow(hwnd);
 
