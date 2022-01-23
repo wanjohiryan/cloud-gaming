@@ -18,6 +18,7 @@ type WebRTC struct {
 }
 
 type OnIceCallback func(candidate string)
+type OnExitCallback func()
 
 func NewWebRTC() *WebRTC {
 	return &WebRTC{
@@ -27,7 +28,7 @@ func NewWebRTC() *WebRTC {
 	}
 }
 
-func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback) (string, error) {
+func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCallback) (string, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println(err)
@@ -89,7 +90,7 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback) (string, error)
 
 		if state == webrtc.ICEConnectionStateFailed || state == webrtc.ICEConnectionStateClosed || state == webrtc.ICEConnectionStateDisconnected {
 			log.Println("ICE Connection failed")
-			w.StopClient()
+			exitCb()
 		}
 	})
 
@@ -170,38 +171,25 @@ func (w *WebRTC) StopClient() {
 	}()
 
 	w.conn.Close()
-	w.conn = nil
 
-	close(w.InputChannel)
 	close(w.ImageChannel)
 	close(w.AudioChannel)
+	close(w.InputChannel)
 }
 
 func (w *WebRTC) startStreaming(videoTrack *webrtc.TrackLocalStaticRTP, opusTrack *webrtc.TrackLocalStaticRTP) {
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("Recovered from err", r)
-			}
-		}()
-
 		for packet := range w.ImageChannel {
 			if err := videoTrack.WriteRTP(packet); err != nil {
-				panic(err)
+				log.Println("Error when writing RTP to video track", err)
 			}
 		}
 	}()
 
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("Recovered from err", r)
-			}
-		}()
-
 		for packet := range w.AudioChannel {
 			if err := opusTrack.WriteRTP(packet); err != nil {
-				panic(err)
+				log.Println("Error when writing RTP to opus track", err)
 			}
 		}
 	}()

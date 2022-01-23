@@ -128,8 +128,6 @@ func (s *StreamRelayer) relayStream(listener *net.UDPConn, output chan<- *rtp.Pa
 			continue
 		}
 
-		fmt.Println("Got a rtp packet", n)
-
 		var packet rtp.Packet
 		if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
 			log.Println("Error during unmarshalling RTP packet", err)

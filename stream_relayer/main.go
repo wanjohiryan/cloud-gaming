@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -56,9 +57,8 @@ func main() {
 	}
 
 	// Create channel pubsub for communication with coordinator
-	ps, err := pubsub.NewRedisPubSub(
-		fmt.Sprintf("%s:%s", MustEnv("REDIS_HOST"), MustEnv("REDIS_PORT")),
-		"")
+	redisAddr := fmt.Sprintf("%s:%s", MustEnv("REDIS_HOST"), MustEnv("REDIS_PORT"))
+	ps, err := pubsub.NewRedisPubSub(redisAddr, "")
 	if err != nil {
 		panic(fmt.Sprintf("Couldn't create a pubsub %s", err))
 	}
@@ -69,7 +69,7 @@ func main() {
 
 	// Start WebRTC
 	webrtcClient := webrtc.NewWebRTC()
-	offer, err := webrtcClient.StartClient("vpx", func(candidate string) {
+	onIceCandidateCb := func(candidate string) {
 		err := channel.Publish(&pubsub.Message{
 			Sender:    constants.Relayer,
 			Recipient: constants.Coordinator,
@@ -79,7 +79,25 @@ func main() {
 		if err != nil {
 			log.Println("Couldn't send candidate", err)
 		}
-	})
+	}
+	onExitCb := func() {
+		// must close in this order due to stream bridging
+		close(relayer.VideoStream)
+		close(relayer.AudioStream)
+		webrtcClient.StopClient()
+		close(relayer.AppEvents)
+
+		err = channel.Publish(&pubsub.Message{
+			Sender:    constants.Relayer,
+			Recipient: constants.Coordinator,
+			Type:      constants.ExitMessage,
+			Data:      "",
+		})
+		if err != nil {
+			log.Println("Couldn't send exit message", err)
+		}
+	}
+	offer, err := webrtcClient.StartClient("vpx", onIceCandidateCb, onExitCb)
 	if err != nil {
 		panic(fmt.Sprintf("Couldn't start webrtc client %s", err))
 	}
@@ -113,6 +131,44 @@ func main() {
 		}
 	})
 
+	bridgeStreamRelayerAndWebRTC(relayer, webrtcClient)
+
 	exit := make(chan struct{})
 	<-exit
+}
+
+type WebRTCMessage struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
+func bridgeStreamRelayerAndWebRTC(relayer *stream.StreamRelayer, webrtcClient *webrtc.WebRTC) {
+	log.Println("Start bridging streams..")
+
+	go func() {
+		for packet := range relayer.VideoStream {
+			webrtcClient.ImageChannel <- packet
+		}
+	}()
+
+	go func() {
+		for packet := range relayer.VideoStream {
+			webrtcClient.AudioChannel <- packet
+		}
+	}()
+
+	go func() {
+		for rawInput := range webrtcClient.InputChannel {
+			var msg WebRTCMessage
+			if err := json.Unmarshal(rawInput, &msg); err != nil {
+				log.Println("Couldn't parse webrtc data message")
+				continue
+			}
+
+			relayer.AppEvents <- stream.Packet{
+				Type: msg.Type,
+				Data: msg.Data,
+			}
+		}
+	}()
 }

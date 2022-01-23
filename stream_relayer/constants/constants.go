@@ -13,6 +13,7 @@ const MouseDown = "MOUSEDOWN"
 
 const SDPMessage pubsub.MessageType = "sdp"
 const IceCandidateMessage pubsub.MessageType = "ice-candidate"
+const ExitMessage pubsub.MessageType = "exit"
 
 const Relayer = "relayer"
 const Coordinator = "coordinator"
