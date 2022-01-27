@@ -1,4 +1,5 @@
 #include <iostream>
+#include <csignal>
 #include <windows.h>
 // #include <psapi.h>
 #include <vector>
@@ -42,6 +43,9 @@ int clientConnect()
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(9090);
+
+    cout << "HOST\n";
+    cout << hostToIp(hostAddr) << endl;
     addr.sin_addr.s_addr = inet_addr(hostToIp(hostAddr).c_str());
 
     cout << "Connecting to server!" << endl;
@@ -264,7 +268,7 @@ void *thealthcheck(void *args)
         {
             // socket is died
             cout << "Broken pipe" << endl;
-            done = true;
+            raise(SIGINT);
             return NULL;
         }
         Sleep(2000);
@@ -309,6 +313,10 @@ void processEvent(string ev, bool isDxGame)
     }
 }
 
+void exitSignalHandler(int signal) {
+    exit(1);
+}
+
 int main(int argc, char *argv[])
 {
     winTitle = (char *)"Notepad";
@@ -349,6 +357,8 @@ int main(int argc, char *argv[])
     pthread_t th1;
     pthread_t th2;
 
+    signal(SIGINT, exitSignalHandler);
+
     int t1 = pthread_create(&th1, NULL, thealthcheck, NULL);
     int t2 = pthread_create(&th2, NULL, thwndupdate, NULL);
 
@@ -359,10 +369,6 @@ int main(int argc, char *argv[])
 
     do
     {
-        if (done)
-        {
-            exit(1);
-        }
         //Receive a reply from the server
         if ((recv_size = recv(server, buf, 1024, 0)) == SOCKET_ERROR)
         {

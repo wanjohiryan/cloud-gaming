@@ -4,48 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
+	"streamer/utils"
 
-	"streamer/app/pubsub"
+	"streamer/app/stream"
+	"streamer/app/webrtc"
 	"streamer/constants"
-	"streamer/pkg/stream"
-	"streamer/pkg/webrtc"
+	"streamer/pkg/pubsub"
 )
 
-func MustEnv(name string) string {
-	env := os.Getenv(name)
-	if env == "" {
-		panic(fmt.Sprintf("Missing env %s", name))
-	}
-
-	return env
-}
-
-func MustStrToFloat32(val string) float32 {
-	fVal, err := strconv.ParseFloat(val, 32)
-	if err != nil {
-		panic(fmt.Sprintf("Couldn't convert str to float32: %s", err))
-	}
-
-	return float32(fVal)
-}
-
-func MustStrToInt(val string) int {
-	iVal, err := strconv.ParseInt(val, 10, 32)
-	if err != nil {
-		panic(fmt.Sprintf("Couldn't convert str to int: %s", err))
-	}
-
-	return int(iVal)
-}
-
 func main() {
-	ID := MustEnv("ID")
-	screenWidth := MustStrToFloat32(MustEnv("SCREEN_WIDTH"))
-	screenHeight := MustStrToFloat32(MustEnv("SCREEN_HEIGHT"))
-	videoRelayPort := MustStrToInt(MustEnv("VIDEO_RELAY_PORT"))
-	audioRelayPort := MustStrToInt(MustEnv("AUDIO_RELAY_PORT"))
+	ID := utils.MustEnv("ID")
+	screenWidth := utils.MustStrToFloat32(utils.MustEnv("SCREEN_WIDTH"))
+	screenHeight := utils.MustStrToFloat32(utils.MustEnv("SCREEN_HEIGHT"))
+	videoRelayPort := utils.MustStrToInt(utils.MustEnv("VIDEO_RELAY_PORT"))
+	audioRelayPort := utils.MustStrToInt(utils.MustEnv("AUDIO_RELAY_PORT"))
 
 	// Start relaying streams
 	relayer, err := stream.NewStreamRelayer(videoRelayPort, audioRelayPort, screenWidth, screenHeight)
@@ -57,7 +29,7 @@ func main() {
 	}
 
 	// Create channel pubsub for communication with coordinator
-	redisAddr := fmt.Sprintf("%s:%s", MustEnv("REDIS_HOST"), MustEnv("REDIS_PORT"))
+	redisAddr := fmt.Sprintf("%s:%s", utils.MustEnv("REDIS_HOST"), utils.MustEnv("REDIS_PORT"))
 	ps, err := pubsub.NewRedisPubSub(redisAddr, "")
 	if err != nil {
 		panic(fmt.Sprintf("Couldn't create a pubsub %s", err))

@@ -76,7 +76,7 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCa
 	}
 
 	//Create a data channel for input
-	inputTrack, err := w.conn.CreateDataChannel("app-input", nil)
+	inputTrack, err := w.conn.CreateDataChannel("pkg-input", nil)
 
 	inputTrack.OnMessage(func(msg webrtc.DataChannelMessage) {
 		w.InputChannel <- msg.Data
@@ -102,9 +102,6 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCa
 				return
 			}
 			iceCb(candidate)
-		} else {
-			// finish, send null
-			iceCb("")
 		}
 	})
 

@@ -1,7 +1,7 @@
 package constants
 
 import (
-	"streamer/app/pubsub"
+	"streamer/pkg/pubsub"
 )
 
 const WineConnPort = 9090
