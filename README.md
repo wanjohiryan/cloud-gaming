@@ -1,4 +1,4 @@
-#CLOUD GAMING [WIP]
+# CLOUD GAMING [WIP]
 
 This project allows users to play computer games on browsers, without download or installation, just at the push of a button.
 This means that users can play AAA games on their low-spec computers or smartphones or even smart TVs anywhere and anytime.
