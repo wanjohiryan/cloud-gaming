@@ -24,15 +24,8 @@ var port = flag.Int("port", 8080, "server port address")
 func startVM(id uuid.UUID) error {
 	log.Println("Spinning off VM..")
 
-	params := []string{
-		"docker-compose",
-		fmt.Sprintf("-p %s", id.String()),
-		"up",
-	}
-
-	cmd := exec.Command(fmt.Sprintf("ID=%s", id.String()), params...)
-	err := cmd.Run()
-	if err != nil {
+	cmd := exec.Command("./startVM.sh", id.String())
+	if err := cmd.Start(); err != nil {
 		return err
 	}
 
@@ -42,13 +35,8 @@ func startVM(id uuid.UUID) error {
 func stopVM(id uuid.UUID) error {
 	log.Println("Stopping VM..")
 
-	params := []string{
-		fmt.Sprintf("-p %s", id.String()),
-		"down",
-	}
-
-	cmd := exec.Command("docker-compose", params...)
-	if err := cmd.Run(); err != nil {
+	cmd := exec.Command("./stopVM.sh", id.String())
+	if err := cmd.Start(); err != nil {
 		return err
 	}
 
@@ -83,7 +71,7 @@ func connect(w http.ResponseWriter, r *http.Request) {
 		switch msg.Type {
 		case constants.ExitMessage:
 			if err := stopVM(id); err != nil {
-				log.Println("Error when let docker-compose down", err)
+				log.Println("Error when stop VM with ID", id.String(), err)
 				done <- struct{}{}
 				return
 			}
@@ -119,7 +107,12 @@ func connect(w http.ResponseWriter, r *http.Request) {
 			switch msg.Type {
 			case constants.StartMessage:
 				if err := startVM(id); err != nil {
-					log.Println("Error when let docker-compose up", err)
+					log.Println("Error when start VM with ID", id.String(), err)
+					return
+				}
+			case constants.ExitMessage:
+				if err := stopVM(id); err != nil {
+					log.Println("Error when stop VM with ID", id.String(), err)
 					return
 				}
 			default:
