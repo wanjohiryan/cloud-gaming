@@ -1,15 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
 
 	"coordinator/constants"
 	"coordinator/pkg/pubsub"
 	"coordinator/utils"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -18,7 +21,43 @@ var ps *pubsub.RedisPubSub
 
 var port = flag.Int("port", 8080, "server port address")
 
+func startVM(id uuid.UUID) error {
+	log.Println("Spinning off VM..")
+
+	params := []string{
+		"docker-compose",
+		fmt.Sprintf("-p %s", id.String()),
+		"up",
+	}
+
+	cmd := exec.Command(fmt.Sprintf("ID=%s", id.String()), params...)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func stopVM(id uuid.UUID) error {
+	log.Println("Stopping VM..")
+
+	params := []string{
+		fmt.Sprintf("-p %s", id.String()),
+		"down",
+	}
+
+	cmd := exec.Command("docker-compose", params...)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func connect(w http.ResponseWriter, r *http.Request) {
+	done := make(chan struct{})
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Couldn't upgrade connection", err)
@@ -26,13 +65,14 @@ func connect(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	id, err := 123, nil // uuid.NewRandom()
+	id, err := uuid.NewRandom()
 	if err != nil {
 		log.Println("Couldn't generate UUID", err)
 		return
 	}
 
-	channel := ps.Subscribe(fmt.Sprintf("channel-%d", id))
+	channelName := fmt.Sprintf("channel-%s", id.String())
+	channel := ps.Subscribe(channelName)
 	defer channel.Close()
 
 	channel.OnMessage(func(msg *pubsub.Message) {
@@ -42,37 +82,57 @@ func connect(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case constants.ExitMessage:
-			// TODO: terminate appvm
+			if err := stopVM(id); err != nil {
+				log.Println("Error when let docker-compose down", err)
+				done <- struct{}{}
+				return
+			}
 		default:
-			err := conn.WriteJSON(msg)
-			if err != nil {
+			if err := conn.WriteJSON(msg); err != nil {
 				log.Println("Error when write WS message", err)
-				channel.Close()
+				done <- struct{}{}
 				return
 			}
 		}
 	})
 
 	for {
-		var msg pubsub.Message
-		if err := conn.ReadJSON(&msg); err != nil {
-			log.Println("Error when read WS message", err)
+		select {
+		case <-done:
 			return
-		}
-
-		switch msg.Type {
-		case constants.StartMessage:
-			// TODO: start appvm
 		default:
-			err := channel.Publish(&pubsub.Message{
-				Sender:    constants.Coordinator,
-				Recipient: constants.Relayer,
-				Type:      msg.Type,
-				Data:      msg.Data,
-			})
+			msgType, rawMsg, err := conn.ReadMessage()
 			if err != nil {
-				log.Println("Couldn't publish message to relayer", err)
+				log.Println("Error when read WS message", err)
+				return
+			}
+			if msgType != websocket.TextMessage {
 				continue
+			}
+
+			var msg pubsub.Message
+			if err := json.Unmarshal(rawMsg, &msg); err != nil {
+				log.Println("Error when parse WS message", err)
+				continue
+			}
+
+			switch msg.Type {
+			case constants.StartMessage:
+				if err := startVM(id); err != nil {
+					log.Println("Error when let docker-compose up", err)
+					return
+				}
+			default:
+				err := channel.Publish(&pubsub.Message{
+					Sender:    constants.Coordinator,
+					Recipient: constants.Relayer,
+					Type:      msg.Type,
+					Data:      msg.Data,
+				})
+				if err != nil {
+					log.Println("Couldn't publish message to relayer", err)
+					continue
+				}
 			}
 		}
 	}

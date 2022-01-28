@@ -90,6 +90,10 @@ func (c *RedisChannel) OnMessage(cb func(msg *Message)) {
 		for {
 			rawMsg, err := c.subscriber.ReceiveMessage(context.Background())
 			if err != nil {
+				if err == redis.ErrClosed {
+					return
+				}
+
 				log.Println("Couldn't receive message from Redis channel", err)
 				continue
 			}

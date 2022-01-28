@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  appvm:
+    build:
+      context: ../appvm
+      dockerfile: Dockerfile
+    restart: on-failure
+    env_file:
+      - .env.appvm
+    volumes:
+      - ./apps:/appvm/apps
+    depends_on:
+      - relayer
+  relayer:
+    build:
+      context: ../stream_relayer
+      dockerfile: Dockerfile
+    restart: on-failure
+    environment:
+      - ID=${ID}
+    env_file:
+      - .env.relayer
