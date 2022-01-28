@@ -1,39 +1,6 @@
 version: "3.8"
 
 services:
-  appvm:
-    build:
-      context: ./appvm
-      dockerfile: Dockerfile
-    restart: on-failure
-    env_file:
-      - .env.appvm
-    volumes:
-      - ./apps:/appvm/apps
-    depends_on:
-      - relayer
-  relayer:
-    build:
-      context: ./stream_relayer
-      dockerfile: Dockerfile
-    restart: on-failure
-    env_file:
-      - .env.relayer
-    depends_on:
-      - redis
-    ports:
-      - "9090:9090"
-  coordinator:
-    build:
-      context: ./coordinator
-      dockerfile: Dockerfile
-    restart: on-failure
-    env_file:
-      - .env.coordinator
-    ports:
-      - "8080:8080"
-    depends_on:
-      - redis
   redis:
     image: redis
     restart: always
