@@ -22,7 +22,7 @@ var ps *pubsub.RedisPubSub
 var port = flag.Int("port", 8080, "server port address")
 
 func startVM(id uuid.UUID) error {
-	log.Println("Spinning off VM..")
+	log.Println("Spinning off VM", id.String())
 
 	cmd := exec.Command("./startVM.sh", id.String())
 	if err := cmd.Start(); err != nil {
@@ -33,7 +33,7 @@ func startVM(id uuid.UUID) error {
 }
 
 func stopVM(id uuid.UUID) error {
-	log.Println("Stopping VM..")
+	log.Println("Stopping VM", id.String())
 
 	cmd := exec.Command("./stopVM.sh", id.String())
 	if err := cmd.Start(); err != nil {
