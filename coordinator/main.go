@@ -45,6 +45,7 @@ func stopVM(id uuid.UUID) error {
 
 func connect(w http.ResponseWriter, r *http.Request) {
 	done := make(chan struct{})
+	startedVM := false
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -70,19 +71,23 @@ func connect(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case constants.ExitMessage:
-			if err := stopVM(id); err != nil {
-				log.Println("Error when stop VM with ID", id.String(), err)
-				done <- struct{}{}
-				return
-			}
+			done <- struct{}{}
 		default:
 			if err := conn.WriteJSON(msg); err != nil {
 				log.Println("Error when write WS message", err)
 				done <- struct{}{}
-				return
 			}
 		}
 	})
+
+	defer func() {
+		if !startedVM {
+			return
+		}
+		if err := stopVM(id); err != nil {
+			log.Println("Error when stop VM with ID", id.String(), err)
+		}
+	}()
 
 	for {
 		select {
@@ -110,11 +115,9 @@ func connect(w http.ResponseWriter, r *http.Request) {
 					log.Println("Error when start VM with ID", id.String(), err)
 					return
 				}
+				startedVM = true
 			case constants.ExitMessage:
-				if err := stopVM(id); err != nil {
-					log.Println("Error when stop VM with ID", id.String(), err)
-					return
-				}
+				return
 			default:
 				err := channel.Publish(&pubsub.Message{
 					Sender:    constants.Coordinator,
