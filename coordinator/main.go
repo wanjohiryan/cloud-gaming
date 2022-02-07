@@ -16,7 +16,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		if r.Header.Get("Origin") == utils.MustEnv("ALLOWED_ORIGIN") {
+			return true
+		}
+
+		return false
+	},
+}
 var ps *pubsub.RedisPubSub
 
 var port = flag.Int("port", 8080, "server port address")

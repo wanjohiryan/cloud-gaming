@@ -9,7 +9,7 @@ services:
     env_file:
       - .env.appvm
     volumes:
-      - ./apps:/appvm/apps
+      - ../apps:/appvm/apps
     depends_on:
       - relayer
   relayer:

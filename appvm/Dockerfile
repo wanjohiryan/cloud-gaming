@@ -36,4 +36,3 @@ COPY syncinput.cpp ./syncinput.cpp
 RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o ./syncinput.exe -lws2_32 -lpthread -static
 
 ENTRYPOINT ["supervisord"]
-#ENTRYPOINT ["wine", "syncinput.exe", "sth", "pkg", "stream_relayer"]

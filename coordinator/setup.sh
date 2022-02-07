@@ -13,4 +13,6 @@ apt-get install -y golang-go
 docker-compose build --parallel
 
 # build and run coordinator
+export $(cat .env.coordinator | xargs)
+
 go run main.go
