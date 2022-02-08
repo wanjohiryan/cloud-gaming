@@ -35,6 +35,8 @@ function App() {
       ],
     });
 
+    pc.addTransceiver("video", { direction: "recvonly" });
+
     pc.ontrack = (event) => {
       console.log("got track", event);
       if (event.streams && event.streams[0]) {
@@ -80,7 +82,7 @@ function App() {
 
     ws.onmessage = async (event) => {
       const msg = JSON.parse(event.data);
-      console.log(msg);
+
       if (msg.type === "sdp") {
         const offer = JSON.parse(decodeBase64(msg.data));
         await pc.setRemoteDescription(new RTCSessionDescription(offer));

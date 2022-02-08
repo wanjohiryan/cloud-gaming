@@ -62,6 +62,10 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCa
 		return "", err
 	}
 
+	_, err = w.conn.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
+
 	// Create and add audio  track
 	opusTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
 		MimeType: webrtc.MimeTypeOpus,
@@ -76,7 +80,7 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCa
 	}
 
 	//Create a data channel for input
-	inputTrack, err := w.conn.CreateDataChannel("pkg-input", nil)
+	inputTrack, err := w.conn.CreateDataChannel("app-input", nil)
 
 	inputTrack.OnMessage(func(msg webrtc.DataChannelMessage) {
 		w.InputChannel <- msg.Data

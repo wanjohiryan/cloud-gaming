@@ -5,12 +5,11 @@ export default function VideoStream({ src, height, width }) {
 
   useEffect(() => {
     if (src) {
-      console.log("got src", src);
       videoRef.current.srcObject = src;
     }
   }, [src]);
 
   return (
-    <video controls height={height} width={width} ref={videoRef} autoPlay />
+    <video height={height} width={width} ref={videoRef} autoPlay controls />
   );
 }
