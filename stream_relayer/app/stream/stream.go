@@ -29,10 +29,10 @@ type StreamRelayer struct {
 	screenHeight  float32
 }
 
-func NewStreamRelayer(videoRelayPort, audioRelayPort int, screenWidth, screenHeight float32) (*StreamRelayer, error) {
+func NewStreamRelayer(videoStream, audioStream chan *rtp.Packet, videoRelayPort, audioRelayPort int, screenWidth, screenHeight float32) (*StreamRelayer, error) {
 	s := &StreamRelayer{
-		VideoStream:  make(chan *rtp.Packet, 1),
-		AudioStream:  make(chan *rtp.Packet, 1),
+		VideoStream:  videoStream,
+		AudioStream:  audioStream,
 		AppEvents:    make(chan Packet, 1),
 		screenWidth:  screenWidth,
 		screenHeight: screenHeight,
@@ -107,7 +107,10 @@ func (s *StreamRelayer) Start() error {
 
 func (s *StreamRelayer) relayStream(listener *net.UDPConn, output chan<- *rtp.Packet) {
 	defer func() {
-		_ = listener.Close()
+		if r := recover(); r != nil {
+			// maybe output channel is closed
+			_ = listener.Close()
+		}
 	}()
 
 	r := ring.New(120)

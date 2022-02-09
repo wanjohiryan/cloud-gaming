@@ -19,15 +19,6 @@ func main() {
 	videoRelayPort := utils.MustStrToInt(utils.MustEnv("VIDEO_RELAY_PORT"))
 	audioRelayPort := utils.MustStrToInt(utils.MustEnv("AUDIO_RELAY_PORT"))
 
-	// Start relaying streams
-	relayer, err := stream.NewStreamRelayer(videoRelayPort, audioRelayPort, screenWidth, screenHeight)
-	if err != nil {
-		panic(fmt.Sprintf("Couldn't create a stream relayer %s", err))
-	}
-	if err := relayer.Start(); err != nil {
-		panic(fmt.Sprintf("Couldn't start relaying streams %s", err))
-	}
-
 	// Create channel pubsub for communication with coordinator
 	redisAddr := fmt.Sprintf("%s:%s", utils.MustEnv("REDIS_HOST"), utils.MustEnv("REDIS_PORT"))
 	ps, err := pubsub.NewRedisPubSub(redisAddr, "")
@@ -41,6 +32,16 @@ func main() {
 
 	// Start WebRTC
 	webrtcClient := webrtc.NewWebRTC()
+
+	// Start relaying streams
+	relayer, err := stream.NewStreamRelayer(webrtcClient.ImageChannel, webrtcClient.AudioChannel, videoRelayPort, audioRelayPort, screenWidth, screenHeight)
+	if err != nil {
+		panic(fmt.Sprintf("Couldn't create a stream relayer %s", err))
+	}
+	if err := relayer.Start(); err != nil {
+		panic(fmt.Sprintf("Couldn't start relaying streams %s", err))
+	}
+
 	onIceCandidateCb := func(candidate string) {
 		err := channel.Publish(&pubsub.Message{
 			Sender:    constants.Relayer,
@@ -69,7 +70,7 @@ func main() {
 			log.Println("Couldn't send exit message", err)
 		}
 	}
-	offer, err := webrtcClient.StartClient("vpx", onIceCandidateCb, onExitCb)
+	offer, err := webrtcClient.StartClient("h264", onIceCandidateCb, onExitCb)
 	if err != nil {
 		panic(fmt.Sprintf("Couldn't start webrtc client %s", err))
 	}
@@ -103,7 +104,7 @@ func main() {
 		}
 	})
 
-	bridgeStreamRelayerAndWebRTC(relayer, webrtcClient)
+	//bridgeStreamRelayerAndWebRTC(relayer, webrtcClient)
 
 	exit := make(chan struct{})
 	<-exit
