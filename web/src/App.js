@@ -9,6 +9,7 @@ import "./App.scss";
 function App() {
   const [ws, setWs] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
+  const [inpChannel, setInpChannel] = useState(null);
 
   useEffect(() => {
     const ws = new WebSocket(process.env.REACT_APP_WS_ENDPOINT);
@@ -35,7 +36,20 @@ function App() {
       ],
     });
 
-    pc.addTransceiver("video", { direction: "recvonly" });
+    pc.ondatachannel = (event) => {
+      const channel = event.channel;
+      if (channel.label === "app-input") {
+        channel.onopen = () => {
+          console.log("got input datachannel");
+          setInpChannel(channel);
+        };
+
+        channel.onclose = () => {
+          console.log("closed input datachannel");
+          setInpChannel(null);
+        };
+      }
+    };
 
     pc.ontrack = (event) => {
       console.log("got track", event);
@@ -108,7 +122,12 @@ function App() {
 
   return (
     <div className="App">
-      <VideoStream src={remoteStream} height="600px" width="800px" />
+      <VideoStream
+        src={remoteStream}
+        height="600px"
+        width="800px"
+        inpChannel={inpChannel}
+      />
     </div>
   );
 }

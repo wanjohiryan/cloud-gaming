@@ -170,7 +170,6 @@ void sendMouseDown(bool isLeft, byte state, float x, float y)
 
     if (isLeft && state == MOUSE_DOWN)
     {
-
         Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_ABSOLUTE;
     }
     else if (isLeft && state == MOUSE_UP)
