@@ -19,6 +19,15 @@ func main() {
 	videoRelayPort := utils.MustStrToInt(utils.MustEnv("VIDEO_RELAY_PORT"))
 	audioRelayPort := utils.MustStrToInt(utils.MustEnv("AUDIO_RELAY_PORT"))
 
+	// Start relaying streams
+	relayer, err := stream.NewStreamRelayer(videoRelayPort, audioRelayPort, screenWidth, screenHeight)
+	if err != nil {
+		panic(fmt.Sprintf("Couldn't create a stream relayer %s", err))
+	}
+	if err := relayer.Start(); err != nil {
+		panic(fmt.Sprintf("Couldn't start relaying streams %s", err))
+	}
+
 	// Create channel pubsub for communication with coordinator
 	redisAddr := fmt.Sprintf("%s:%s", utils.MustEnv("REDIS_HOST"), utils.MustEnv("REDIS_PORT"))
 	ps, err := pubsub.NewRedisPubSub(redisAddr, "")
@@ -28,19 +37,14 @@ func main() {
 	defer ps.Close()
 
 	channel := ps.Subscribe(fmt.Sprintf("channel-%s", ID))
-	defer channel.Close()
+	closedChannel := make(chan struct{})
+	defer func() {
+		closedChannel <- struct{}{}
+		channel.Close()
+	}()
 
 	// Start WebRTC
 	webrtcClient := webrtc.NewWebRTC()
-
-	// Start relaying streams
-	relayer, err := stream.NewStreamRelayer(webrtcClient.ImageChannel, webrtcClient.AudioChannel, videoRelayPort, audioRelayPort, screenWidth, screenHeight)
-	if err != nil {
-		panic(fmt.Sprintf("Couldn't create a stream relayer %s", err))
-	}
-	if err := relayer.Start(); err != nil {
-		panic(fmt.Sprintf("Couldn't start relaying streams %s", err))
-	}
 
 	onIceCandidateCb := func(candidate string) {
 		err := channel.Publish(&pubsub.Message{
@@ -102,9 +106,9 @@ func main() {
 				panic(fmt.Sprintf("Couldn't set ICE candidate %s", err))
 			}
 		}
-	})
+	}, closedChannel)
 
-	//bridgeStreamRelayerAndWebRTC(relayer, webrtcClient)
+	bridgeStreamRelayerAndWebRTC(relayer, webrtcClient)
 
 	exit := make(chan struct{})
 	<-exit
@@ -125,7 +129,7 @@ func bridgeStreamRelayerAndWebRTC(relayer *stream.StreamRelayer, webrtcClient *w
 	}()
 
 	go func() {
-		for packet := range relayer.VideoStream {
+		for packet := range relayer.AudioStream {
 			webrtcClient.AudioChannel <- packet
 		}
 	}()

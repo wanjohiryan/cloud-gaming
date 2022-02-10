@@ -18,13 +18,14 @@ func TestRedisChannel(t *testing.T) {
 	require.NoError(t, err)
 
 	c := ps.Subscribe("some-channel")
+	defer c.Close()
 
 	received := make(chan bool)
 	c.OnMessage(func(msg *Message) {
 		if msg.Type == "test" {
 			received <- true
 		}
-	})
+	}, nil)
 
 	err = c.Publish(&Message{Type: "test"})
 	require.NoError(t, err)

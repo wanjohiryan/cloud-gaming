@@ -29,11 +29,11 @@ type StreamRelayer struct {
 	screenHeight  float32
 }
 
-func NewStreamRelayer(videoStream, audioStream chan *rtp.Packet, videoRelayPort, audioRelayPort int, screenWidth, screenHeight float32) (*StreamRelayer, error) {
+func NewStreamRelayer(videoRelayPort, audioRelayPort int, screenWidth, screenHeight float32) (*StreamRelayer, error) {
 	s := &StreamRelayer{
-		VideoStream:  videoStream,
-		AudioStream:  audioStream,
-		AppEvents:    make(chan Packet, 1),
+		VideoStream:  make(chan *rtp.Packet, 100),
+		AudioStream:  make(chan *rtp.Packet, 100),
+		AppEvents:    make(chan Packet, 100),
 		screenWidth:  screenWidth,
 		screenHeight: screenHeight,
 	}

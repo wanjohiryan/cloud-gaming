@@ -30,7 +30,7 @@ type Message struct {
 
 type Channel interface {
 	Publish(msg *Message) error
-	OnMessage(cb func(msg *Message))
+	OnMessage(cb func(msg *Message), done <-chan struct{})
 	Close() error
 }
 
@@ -85,27 +85,32 @@ func (c *RedisChannel) Publish(msg *Message) error {
 	return nil
 }
 
-func (c *RedisChannel) OnMessage(cb func(msg *Message)) {
+func (c *RedisChannel) OnMessage(cb func(msg *Message), done <-chan struct{}) {
 	go func() {
 		for {
-			rawMsg, err := c.subscriber.ReceiveMessage(context.Background())
-			if err != nil {
-				if err == redis.ErrClosed {
-					return
+			select {
+			case <-done:
+				return
+			default:
+				rawMsg, err := c.subscriber.ReceiveMessage(context.Background())
+				if err != nil {
+					if err == redis.ErrClosed {
+						return
+					}
+
+					log.Println("Couldn't receive message from Redis channel", err)
+					continue
 				}
 
-				log.Println("Couldn't receive message from Redis channel", err)
-				continue
+				var msg Message
+
+				if err := json.Unmarshal([]byte(rawMsg.Payload), &msg); err != nil {
+					log.Println("Couldn't parse message from Redis channel", err)
+					continue
+				}
+
+				cb(&msg)
 			}
-
-			var msg Message
-
-			if err := json.Unmarshal([]byte(rawMsg.Payload), &msg); err != nil {
-				log.Println("Couldn't parse message from Redis channel", err)
-				continue
-			}
-
-			cb(&msg)
 		}
 	}()
 }

@@ -70,7 +70,11 @@ func connect(w http.ResponseWriter, r *http.Request) {
 
 	channelName := fmt.Sprintf("channel-%s", id.String())
 	channel := ps.Subscribe(channelName)
-	defer channel.Close()
+	closedChannel := make(chan struct{})
+	defer func() {
+		closedChannel <- struct{}{}
+		channel.Close()
+	}()
 
 	channel.OnMessage(func(msg *pubsub.Message) {
 		if msg.Sender == constants.Coordinator {
@@ -86,7 +90,7 @@ func connect(w http.ResponseWriter, r *http.Request) {
 				done <- struct{}{}
 			}
 		}
-	})
+	}, closedChannel)
 
 	defer func() {
 		if !startedVM {
@@ -104,6 +108,10 @@ func connect(w http.ResponseWriter, r *http.Request) {
 		default:
 			msgType, rawMsg, err := conn.ReadMessage()
 			if err != nil {
+				if closeErr, ok := err.(*websocket.CloseError); ok && closeErr.Code == websocket.CloseGoingAway {
+					return
+				}
+
 				log.Println("Error when read WS message", err)
 				return
 			}

@@ -108,7 +108,7 @@ function App() {
 
   return (
     <div className="App">
-      <VideoStream src={remoteStream} height="200px" width="300px" />
+      <VideoStream src={remoteStream} height="600px" width="800px" />
     </div>
   );
 }

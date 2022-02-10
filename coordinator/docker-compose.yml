@@ -8,8 +8,6 @@ services:
     restart: on-failure
     env_file:
       - .env.appvm
-    privileged: true
-    network_mode: host
     volumes:
       - ../apps:/appvm/apps
     depends_on:
@@ -19,8 +17,6 @@ services:
       context: ../stream_relayer
       dockerfile: Dockerfile
     restart: on-failure
-    privileged: true
-    network_mode: host
     environment:
       - ID=${ID}
 #      - PION_LOG_TRACE=all
