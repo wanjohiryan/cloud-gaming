@@ -79,6 +79,11 @@ export default function VideoStream({ src, height, width, inpChannel }) {
     });
   };
 
+  const onContextMenu = (event) => {
+    event.preventDefault();
+    return false;
+  };
+
   return (
     <video
       height={height}
@@ -89,6 +94,7 @@ export default function VideoStream({ src, height, width, inpChannel }) {
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onMouseMove={onMouseMove}
+      onContextMenu={onContextMenu}
     />
   );
 }

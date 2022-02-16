@@ -3,116 +3,105 @@ package stream
 import (
 	"container/ring"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"time"
 
-	"streamer/constants"
+	"coordinator/app/webrtc"
+	"coordinator/constants"
 
 	"github.com/pion/rtp"
 )
 
-type Packet struct {
-	Type string `json:"type"`
-	Data string `json:"data"`
-}
-
 type StreamRelayer struct {
-	VideoStream   chan *rtp.Packet
-	AudioStream   chan *rtp.Packet
-	AppEvents     chan Packet
+	id            string // for logging
+	videoStream   chan *rtp.Packet
+	audioStream   chan *rtp.Packet
+	eventStream   chan *webrtc.Packet
 	videoListener *net.UDPConn
 	audioListener *net.UDPConn
 	wineConn      *net.TCPConn
+	wineListener  *net.TCPListener
 	screenWidth   float32
 	screenHeight  float32
 }
 
-func NewStreamRelayer(videoRelayPort, audioRelayPort int, screenWidth, screenHeight float32) (*StreamRelayer, error) {
+func NewStreamRelayer(id string, videoStream, audioStream chan *rtp.Packet, eventStream chan *webrtc.Packet, videoListener, audioListener *net.UDPConn, wineListener *net.TCPListener, screenWidth, screenHeight float32) *StreamRelayer {
 	s := &StreamRelayer{
-		VideoStream:  make(chan *rtp.Packet, 100),
-		AudioStream:  make(chan *rtp.Packet, 100),
-		AppEvents:    make(chan Packet, 100),
-		screenWidth:  screenWidth,
-		screenHeight: screenHeight,
+		id:            id,
+		videoStream:   videoStream,
+		audioStream:   audioStream,
+		eventStream:   eventStream,
+		videoListener: videoListener,
+		audioListener: audioListener,
+		wineListener:  wineListener,
+		screenWidth:   screenWidth,
+		screenHeight:  screenHeight,
 	}
 
-	var err error
-
-	s.videoListener, err = newUDPListener(videoRelayPort)
-	if err != nil {
-		return nil, err
-	}
-
-	s.audioListener, err = newUDPListener(audioRelayPort)
-	if err != nil {
-		return nil, err
-	}
-
-	return s, nil
+	return s
 }
 
 func (s *StreamRelayer) Start() error {
-	log.Println("Start relaying streams..")
-
-	la, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf(":%d", constants.WineConnPort))
-	if err != nil {
-		return err
-	}
-	ln, err := net.ListenTCP("tcp", la)
-	if err != nil {
-		return err
-	}
+	log.Printf("[%s] Start relaying streams..\n", s.id)
 
 	wineConnected := make(chan struct{})
 
 	go func() {
 		for {
-			log.Printf("Waiting for syncinput to connect on port :%d\n", constants.WineConnPort)
+			log.Printf("[%s] Waiting for syncinput to connect\n", s.id)
 
-			conn, err := ln.AcceptTCP()
+			conn, err := s.wineListener.AcceptTCP()
 			if err != nil {
-				log.Println("Couldn't accept syncinput connection", err)
+				if errors.Is(err, net.ErrClosed) {
+					return
+				}
+				log.Printf("[%s] Couldn't accept syncinput connection: %s\n", s.id, err)
 				continue
 			}
 
 			err = conn.SetKeepAlive(true)
 			if err != nil {
-				log.Println("Couldn't set keepAlive", err)
+				log.Printf("[%s] Couldn't set keepAlive: %s\n", s.id, err)
 				continue
 			}
 			err = conn.SetKeepAlivePeriod(10 * time.Second)
 			if err != nil {
-				log.Println("Couldn't set keepAlive period", err)
+				log.Printf("[%s] Couldn't set keepAlive period: %s\n", s.id, err)
 				continue
 			}
 
+			if s.wineConn != nil {
+				_ = s.wineConn.Close()
+			}
 			s.wineConn = conn
 			wineConnected <- struct{}{}
 
-			log.Println("Successfully set up syncinput connection")
+			log.Printf("[%s] Successfully set up syncinput connection\n", s.id)
 		}
 	}()
 
-	<-wineConnected
+	go func() {
+		<-wineConnected
 
-	go s.healthCheckVM()
-	go s.handleAppEvents()
-	go s.relayStream(s.videoListener, s.VideoStream)
-	go s.relayStream(s.audioListener, s.AudioStream)
+		go s.healthCheckVM()
+		go s.handleAppEvents()
+		go s.relayStream(s.videoListener, s.videoStream)
+		go s.relayStream(s.audioListener, s.audioStream)
+	}()
 
 	return nil
 }
 
-func (s *StreamRelayer) relayStream(listener *net.UDPConn, output chan<- *rtp.Packet) {
-	defer func() {
-		if r := recover(); r != nil {
-			// maybe output channel is closed
-			_ = listener.Close()
-		}
-	}()
+func (s *StreamRelayer) Close() {
+	if s.wineConn != nil {
+		_ = s.wineConn.Close()
+	}
+}
 
+func (s *StreamRelayer) relayStream(listener *net.UDPConn, output chan<- *rtp.Packet) {
 	r := ring.New(120)
 
 	n := r.Len()
@@ -127,13 +116,16 @@ func (s *StreamRelayer) relayStream(listener *net.UDPConn, output chan<- *rtp.Pa
 
 		n, _, err := listener.ReadFrom(inboundRTPPacket)
 		if err != nil {
-			log.Println("Error during read RTP packet", err)
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			log.Printf("[%s] Error during read RTP packet: %s\n", s.id, err)
 			continue
 		}
 
 		var packet rtp.Packet
 		if err := packet.Unmarshal(inboundRTPPacket[:n]); err != nil {
-			log.Println("Error during unmarshalling RTP packet", err)
+			log.Printf("[%s] Error during unmarshalling RTP packet: %s\n", s.id, err)
 			continue
 		}
 
@@ -142,13 +134,14 @@ func (s *StreamRelayer) relayStream(listener *net.UDPConn, output chan<- *rtp.Pa
 }
 
 func (s *StreamRelayer) healthCheckVM() {
-	log.Println("Start health checking")
-
 	for {
 		if s.wineConn != nil {
 			_, err := s.wineConn.Write([]byte{0})
 			if err != nil {
-				log.Println("Error while health checking", err)
+				if errors.Is(err, net.ErrClosed) {
+					return
+				}
+				log.Printf("[%s] Error while health checking: %s\n", s.id, err)
 			}
 		}
 
@@ -157,7 +150,7 @@ func (s *StreamRelayer) healthCheckVM() {
 }
 
 func (s *StreamRelayer) handleAppEvents() {
-	for packet := range s.AppEvents {
+	for packet := range s.eventStream {
 		switch packet.Type {
 		case constants.KeyUp:
 			s.simulateKey(packet.Data, 0)
@@ -185,14 +178,14 @@ func (s *StreamRelayer) simulateKey(jsonPayload string, keyState byte) {
 	p := &keydownPayload{}
 	err := json.Unmarshal([]byte(jsonPayload), &p)
 	if err != nil {
-		log.Println("Couldn't parse keydown payload")
+		log.Printf("[%s] Couldn't parse keydown payload: %s\n", s.id, err)
 		return
 	}
 
 	vmKeyMsg := fmt.Sprintf("K%d,%b|", p.KeyCode, keyState)
 	_, err = s.wineConn.Write([]byte(vmKeyMsg))
 	if err != nil {
-		log.Println("Couldn't send key event to wine")
+		log.Printf("[%s] Couldn't send key event to wine: %s\n", s.id, err)
 		return
 	}
 }
@@ -213,7 +206,7 @@ func (s *StreamRelayer) simulateMouseEvent(jsonPayload string, mouseState int) {
 	p := &mousePayload{}
 	err := json.Unmarshal([]byte(jsonPayload), &p)
 	if err != nil {
-		log.Println("Couldn't parse mouse payload")
+		log.Printf("[%s] Couldn't parse mouse payload: %s\n", s.id, err)
 		return
 	}
 
@@ -224,19 +217,7 @@ func (s *StreamRelayer) simulateMouseEvent(jsonPayload string, mouseState int) {
 	vmMouseMsg := fmt.Sprintf("M%d,%d,%f,%f,%f,%f|", p.IsLeft, mouseState, p.X, p.Y, p.Width, p.Height)
 	_, err = s.wineConn.Write([]byte(vmMouseMsg))
 	if err != nil {
-		log.Println("Couldn't send mouse event to wine")
+		log.Printf("[%s] Couldn't send mouse event to wine: %s\n", s.id, err)
 		return
 	}
-}
-
-func newUDPListener(rtpPort int) (*net.UDPConn, error) {
-	ln, err := net.ListenUDP("udp", &net.UDPAddr{
-		IP:   net.ParseIP("localhost"),
-		Port: rtpPort,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return ln, nil
 }

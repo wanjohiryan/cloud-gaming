@@ -18,6 +18,7 @@ HWND hwnd;
 char *winTitle;
 char dockerHost[20];
 string hostAddr;
+int hostPort;
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
@@ -42,10 +43,10 @@ int clientConnect()
     int server = socket(AF_INET, SOCK_STREAM, 0);
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(9090);
+    addr.sin_port = htons(hostPort);
 
-    cout << "HOST\n";
-    cout << hostToIp(hostAddr) << endl;
+    cout << "Address\n";
+    cout << hostToIp(hostAddr) << ":" << hostPort << endl;
     addr.sin_addr.s_addr = inet_addr(hostToIp(hostAddr).c_str());
 
     cout << "Connecting to server!" << endl;
@@ -336,7 +337,13 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
+        cout << "HOST " << argv[3] << endl;
         hostAddr = argv[3];
+    }
+    if (argc > 4)
+    {
+        cout << "PORT " << argv[4] << endl;
+        hostPort = stoi(argv[4]);
     }
 
     server = clientConnect();

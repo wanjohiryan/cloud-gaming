@@ -6,21 +6,11 @@ services:
       context: ../appvm
       dockerfile: Dockerfile
     restart: on-failure
+    environment:
+      - videoport=${VIDEO_PORT}
+      - audioport=${AUDIO_PORT}
+      - wsport=${WS_PORT}
     env_file:
       - .env.appvm
     volumes:
       - ../apps:/appvm/apps
-    depends_on:
-      - relayer
-  relayer:
-    build:
-      context: ../stream_relayer
-      dockerfile: Dockerfile
-    restart: on-failure
-    environment:
-      - ID=${ID}
-#      - PION_LOG_TRACE=all
-#      - PION_LOG_DEBUG=all
-#      - PIONS_LOG_INFO=all
-    env_file:
-      - .env.relayer

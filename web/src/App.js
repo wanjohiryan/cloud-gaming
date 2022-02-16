@@ -48,6 +48,13 @@ function App() {
           console.log("closed input datachannel");
           setInpChannel(null);
         };
+      } else if (channel.label === "health-check") {
+        channel.onopen = () => {
+          console.log("got health-check datachannel");
+          setInterval(() => {
+            channel.send({});
+          }, 2000);
+        };
       }
     };
 
@@ -122,6 +129,7 @@ function App() {
 
   return (
     <div className="App">
+      <p>Cloud-gaming</p>
       <VideoStream
         src={remoteStream}
         height="600px"
