@@ -4,6 +4,8 @@ This project allows users to play computer games on browsers, without download o
 This means that users can play AAA games on their low-spec computers or smartphones or even smart TVs anywhere and anytime.
 The only requirement is fast and reliable internet.
 
+![Playing Hercules Demo](https://user-images.githubusercontent.com/16115992/154591788-45159054-f2e0-4001-976b-d89fcf0466c3.gif)
+
 ## Design doc
 
 This project is inspired by [cloudmorph](https://github.com/giongto35/cloud-morph).
