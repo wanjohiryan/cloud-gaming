@@ -143,7 +143,7 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCa
 		return "", err
 	}
 
-	err = w.addInputTrack()
+	err = w.addInputTrack(true)
 	if err != nil {
 		return "", err
 	}
@@ -195,8 +195,18 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCa
 	return encodedOffer, nil
 }
 
-func (w *WebRTC) addInputTrack() error {
-	inputTrack, err := w.conn.CreateDataChannel("app-input", nil)
+func (w *WebRTC) addInputTrack(unreliable bool) error {
+	var options *webrtc.DataChannelInit
+	if unreliable {
+		f := false
+		zero := uint16(0)
+		options = &webrtc.DataChannelInit{
+			Ordered:        &f,
+			MaxRetransmits: &zero,
+		}
+	}
+
+	inputTrack, err := w.conn.CreateDataChannel("app-input", options)
 	if err != nil {
 		return err
 	}

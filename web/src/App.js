@@ -8,8 +8,9 @@ import "./App.scss";
 
 function App() {
   const [ws, setWs] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
+  const [videoStream, setVideoStream] = useState(null);
   const [inpChannel, setInpChannel] = useState(null);
+  const [start, setStart] = useState(false);
 
   useEffect(() => {
     const ws = new WebSocket(process.env.REACT_APP_WS_ENDPOINT);
@@ -26,7 +27,7 @@ function App() {
   }, []);
 
   useEffect(async () => {
-    if (ws === null) return;
+    if (!start) return;
 
     const pc = new RTCPeerConnection({
       iceServers: [
@@ -61,17 +62,17 @@ function App() {
     pc.ontrack = (event) => {
       console.log("got track", event);
       if (event.streams && event.streams[0]) {
-        setRemoteStream(event.streams[0]);
+        setVideoStream(event.streams[0]);
       } else {
         let inboundStream = null;
-        if (!remoteStream) {
+        if (!videoStream) {
           inboundStream = new MediaStream();
           inboundStream.addTrack(event.track);
         } else {
-          inboundStream = { ...remoteStream };
+          inboundStream = { ...videoStream };
           inboundStream.addTrack(event.track);
         }
-        setRemoteStream(inboundStream);
+        setVideoStream(inboundStream);
       }
     };
 
@@ -120,18 +121,56 @@ function App() {
         await pc.setLocalDescription(answer);
       } else if (msg.type === "ice-candidate") {
         const ice = JSON.parse(decodeBase64(msg.data));
-        pc.addIceCandidate(new RTCIceCandidate(ice));
+        try {
+          pc.addIceCandidate(new RTCIceCandidate(ice));
+        } catch (e) {
+          console.log(e);
+        }
       }
     };
 
     return () => pc.close();
-  }, [ws]);
+  }, [start]);
+
+  useEffect(() => {
+    if (inpChannel === null) return;
+
+    document.addEventListener("keydown", (event) => {
+      if (!inpChannel) return;
+
+      inpChannel.send(
+        JSON.stringify({
+          type: "KEYDOWN",
+          data: JSON.stringify({
+            keyCode: event.keyCode,
+          }),
+        })
+      );
+    });
+
+    document.addEventListener("keyup", (event) => {
+      if (!inpChannel) return;
+
+      inpChannel.send(
+        JSON.stringify({
+          type: "KEYUP",
+          data: JSON.stringify({
+            keyCode: event.keyCode,
+          }),
+        })
+      );
+    });
+  }, [inpChannel]);
+
+  const onStartButtonClick = () => {
+    setStart(true);
+  };
 
   return (
     <div className="App">
-      <p>Cloud-gaming</p>
+      <button onClick={onStartButtonClick}>Cloud Gaming</button>
       <VideoStream
-        src={remoteStream}
+        src={videoStream}
         height="600px"
         width="800px"
         inpChannel={inpChannel}

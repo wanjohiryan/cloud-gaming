@@ -1,5 +1,9 @@
 import React, { useRef, useEffect } from "react";
 
+import loading from "../../assets/loading.gif";
+
+import "./style.scss";
+
 export default function VideoStream({ src, height, width, inpChannel }) {
   const videoRef = useRef(null);
 
@@ -86,11 +90,12 @@ export default function VideoStream({ src, height, width, inpChannel }) {
 
   return (
     <video
+      className="video-stream__video"
+      poster={loading}
       height={height}
       width={width}
       ref={videoRef}
       autoPlay
-      muted
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onMouseMove={onMouseMove}

@@ -14,3 +14,6 @@ services:
       - .env.appvm
     volumes:
       - ../apps:/appvm/apps
+#      - winecfg:/root/.wine
+#volumes:
+#  winecfg:
