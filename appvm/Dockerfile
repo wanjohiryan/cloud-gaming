@@ -27,7 +27,7 @@ RUN chmod +x /root/download_gecko_and_mono.sh \
 
 # Install graphic libraries
 RUN winetricks d3dx9_43
-RUN winetricks --force -q dotnet48
+# RUN winetricks --force -q dotnet48
 
 # Silence all fixme warnings from wine
 ENV WINEDEBUG fixme-all
