@@ -299,9 +299,9 @@ func (w *WebRTC) AddCandidate(candidate string) error {
 }
 
 func (w *WebRTC) StopClient() {
-	w.conn.Close()
 	w.inputTrack.Close()
 	w.healthTrack.Close()
+	w.conn.Close()
 	w.closed <- struct{}{}
 }
 
