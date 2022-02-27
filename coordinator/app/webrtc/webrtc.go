@@ -1,16 +1,18 @@
 package webrtc
 
 import (
-	"coordinator/pkg/socket"
-	"coordinator/utils"
 	"encoding/json"
-	"github.com/pion/interceptor"
-	"github.com/pion/rtp"
-	"github.com/pion/webrtc/v3"
 	"log"
 	"net"
 	"sync"
 	"time"
+
+	"coordinator/pkg/socket"
+	"coordinator/utils"
+
+	"github.com/pion/interceptor"
+	"github.com/pion/rtp"
+	"github.com/pion/webrtc/v3"
 )
 
 type WebRTC struct {
@@ -213,6 +215,12 @@ func (w *WebRTC) addInputTrack(unreliable bool) error {
 	w.inputTrack = inputTrack
 
 	inputTrack.OnMessage(func(rawMsg webrtc.DataChannelMessage) {
+		defer func() {
+			if r := recover(); r != nil {
+				// Maybe sent to closed channel
+			}
+		}()
+
 		var msg Packet
 		if err := json.Unmarshal(rawMsg.Data, &msg); err != nil {
 			log.Printf("[%s] Couldn't parse webrtc data message: %s\n", w.id, err)
