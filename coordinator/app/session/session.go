@@ -119,6 +119,7 @@ func startSession(id string, wsConn *ws.Connection) (*webrtc.WebRTC, error) {
 
 	// Start WebRTC
 	webrtcConf := &webrtc.Config{
+		SinglePort:                 8443,
 		DisableDefaultInterceptors: true,
 	}
 	webrtcConn, err := webrtc.NewWebRTC(id,
