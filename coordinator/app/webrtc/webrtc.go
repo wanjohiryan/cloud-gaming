@@ -119,28 +119,12 @@ func NewWebRTC(id string, videoStream, audioStream chan *rtp.Packet, inputStream
 func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCallback) (string, error) {
 	log.Printf("[%s] Start WebRTC..\n", w.id)
 
-	// Create and add video track
-	videoTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
-		MimeType: verbalCodecToMime(vCodec),
-	}, "video", "pion")
+	videoTrack, err := w.addVideoTrack(vCodec)
 	if err != nil {
 		return "", err
 	}
 
-	_, err = w.conn.AddTrack(videoTrack)
-	if err != nil {
-		return "", err
-	}
-
-	// Create and add audio  track
-	opusTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
-		MimeType: webrtc.MimeTypeOpus,
-	}, "audio", "pion")
-	if err != nil {
-		return "", err
-	}
-
-	_, err = w.conn.AddTrack(opusTrack)
+	audioTrack, err := w.addAudioTrack()
 	if err != nil {
 		return "", err
 	}
@@ -158,7 +142,8 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCa
 	w.conn.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 		if state == webrtc.ICEConnectionStateConnected {
 			log.Printf("[%s] ICE Connected succeeded\n", w.id)
-			w.startStreaming(videoTrack, opusTrack)
+			w.startStreamingVideo(videoTrack)
+			w.startStreamingAudio(audioTrack)
 		}
 
 		if state == webrtc.ICEConnectionStateFailed || state == webrtc.ICEConnectionStateClosed || state == webrtc.ICEConnectionStateDisconnected {
@@ -195,6 +180,62 @@ func (w *WebRTC) StartClient(vCodec string, iceCb OnIceCallback, exitCb OnExitCa
 	}
 
 	return encodedOffer, nil
+}
+
+func (w *WebRTC) addVideoTrack(vCodec string) (*webrtc.TrackLocalStaticRTP, error) {
+	videoTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
+		MimeType: verbalCodecToMime(vCodec),
+	}, "video", "pion")
+	if err != nil {
+		return nil, err
+	}
+
+	videoSender, err := w.conn.AddTrack(videoTrack)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read incoming RTCP packets
+	// Before these packets are returned they are processed by interceptors. For things
+	// like NACK this needs to be called.
+	go func() {
+		rtcpBuf := make([]byte, 1500)
+		for {
+			if _, _, rtcpErr := videoSender.Read(rtcpBuf); rtcpErr != nil {
+				return
+			}
+		}
+	}()
+
+	return videoTrack, nil
+}
+
+func (w *WebRTC) addAudioTrack() (*webrtc.TrackLocalStaticRTP, error) {
+	audioTrack, err := webrtc.NewTrackLocalStaticRTP(webrtc.RTPCodecCapability{
+		MimeType: webrtc.MimeTypeOpus,
+	}, "audio", "pion")
+	if err != nil {
+		return nil, err
+	}
+
+	audioSender, err := w.conn.AddTrack(audioTrack)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read incoming RTCP packets
+	// Before these packets are returned they are processed by interceptors. For things
+	// like NACK this needs to be called.
+	go func() {
+		rtcpBuf := make([]byte, 1500)
+		for {
+			if _, _, rtcpErr := audioSender.Read(rtcpBuf); rtcpErr != nil {
+				return
+			}
+		}
+	}()
+
+	return audioTrack, nil
 }
 
 func (w *WebRTC) addInputTrack(unreliable bool) error {
@@ -313,7 +354,7 @@ func (w *WebRTC) StopClient() {
 	w.closed <- struct{}{}
 }
 
-func (w *WebRTC) startStreaming(videoTrack *webrtc.TrackLocalStaticRTP, opusTrack *webrtc.TrackLocalStaticRTP) {
+func (w *WebRTC) startStreamingVideo(videoTrack *webrtc.TrackLocalStaticRTP) {
 	go func() {
 		for packet := range w.imageChannel {
 			if err := videoTrack.WriteRTP(packet); err != nil {
@@ -321,10 +362,12 @@ func (w *WebRTC) startStreaming(videoTrack *webrtc.TrackLocalStaticRTP, opusTrac
 			}
 		}
 	}()
+}
 
+func (w *WebRTC) startStreamingAudio(audioTrack *webrtc.TrackLocalStaticRTP) {
 	go func() {
 		for packet := range w.audioChannel {
-			if err := opusTrack.WriteRTP(packet); err != nil {
+			if err := audioTrack.WriteRTP(packet); err != nil {
 				log.Printf("[%s] Error when writing RTP to opus track: %s\n", w.id, err)
 			}
 		}

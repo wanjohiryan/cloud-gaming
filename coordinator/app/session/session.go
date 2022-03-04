@@ -119,8 +119,8 @@ func startSession(id string, wsConn *ws.Connection) (*webrtc.WebRTC, error) {
 
 	// Start WebRTC
 	webrtcConf := &webrtc.Config{
-		SinglePort:                 8443,
-		DisableDefaultInterceptors: true,
+		//SinglePort:                 8443,
+		//DisableDefaultInterceptors: true,
 	}
 	webrtcConn, err := webrtc.NewWebRTC(id,
 		videoStream, audioStream, inputStream,
@@ -157,7 +157,7 @@ func startSession(id string, wsConn *ws.Connection) (*webrtc.WebRTC, error) {
 
 		relayer.Close()
 	}
-	offer, err := webrtcConn.StartClient("h264", onIceCandidateCb, onExitCb)
+	offer, err := webrtcConn.StartClient("vpx", onIceCandidateCb, onExitCb)
 	if err != nil {
 		fmt.Printf("[%s] Couldn't start webrtc client: %s\n", id, err)
 		return nil, err
