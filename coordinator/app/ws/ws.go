@@ -1,10 +1,11 @@
 package ws
 
 import (
-	"coordinator/constants"
-	"coordinator/settings"
 	"net/http"
 	"sync"
+
+	"coordinator/constants"
+	"coordinator/settings"
 
 	"github.com/gorilla/websocket"
 )
