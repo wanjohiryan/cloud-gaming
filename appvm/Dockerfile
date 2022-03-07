@@ -38,10 +38,11 @@ COPY default.pa /etc/pulse/
 COPY supervisord.conf /etc/supervisor/conf.d/
 COPY syncinput.cpp ./syncinput.cpp
 
-# Add reg files to wineprefix
- COPY wineprefix/*.reg /root/.wine/
-
 # Compile syncinput.cpp
 RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o ./syncinput.exe -lws2_32 -lpthread -static
+
+# Add reg files to wineprefix
+ARG APP_NAME
+COPY apps/${APP_NAME}/setup/ /root/.wine/
 
 ENTRYPOINT ["supervisord"]

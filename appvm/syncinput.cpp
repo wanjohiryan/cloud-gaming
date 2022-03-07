@@ -11,6 +11,7 @@
 using namespace std;
 
 int screenWidth, screenHeight;
+int wineScreenWidth, wineScreenHeight;
 int server; // TODO: Move to local variable
 chrono::_V2::system_clock::time_point last_ping;
 bool done;
@@ -163,6 +164,8 @@ void MouseMove(int x, int y)
 
 void sendMouseDown(bool isLeft, byte state, float x, float y)
 {
+    x *= wineScreenWidth;
+    y *= wineScreenHeight;
     cout << x << ' ' << y << endl;
     INPUT Input = {0};
     ZeroMemory(&Input, sizeof(INPUT));
@@ -344,6 +347,16 @@ int main(int argc, char *argv[])
     {
         cout << "PORT " << argv[4] << endl;
         hostPort = stoi(argv[4]);
+    }
+    if (argc > 5)
+    {
+        cout << "Wine screen width " << argv[5] << endl;
+        wineScreenWidth = stoi(argv[5]);
+    }
+    if (argc > 6)
+    {
+        cout << "Wine screen height " << argv[6] << endl;
+        wineScreenHeight = stoi(argv[6]);
     }
 
     server = clientConnect();

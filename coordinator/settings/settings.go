@@ -1,16 +1,24 @@
 package settings
 
-import "coordinator/utils"
+type Range struct {
+	Min uint16
+	Max uint16
+}
 
 var (
-	ScreenWidth    float32
-	ScreenHeight   float32
-	AllowedOrigins []string
+	AllowedOrigins             []string
+	SinglePort                 int
+	PortRange                  Range
+	IceIpMap                   string
+	DisableDefaultInterceptors bool
+
+	VideoCodec string
 )
 
 func init() {
-	ScreenWidth = utils.MustStrToFloat32(utils.MustEnv("SCREEN_WIDTH"))
-	ScreenHeight = utils.MustStrToFloat32(utils.MustEnv("SCREEN_HEIGHT"))
-
 	AllowedOrigins = []string{"*"}
+	SinglePort = 8443
+	DisableDefaultInterceptors = false
+
+	VideoCodec = "vpx"
 }

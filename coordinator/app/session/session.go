@@ -19,7 +19,7 @@ import (
 	"github.com/pion/rtp"
 )
 
-func startVM(id string, videoRelayPort, audioRelayPort, winePort int) error {
+func startVM(id string, appName string, videoRelayPort, audioRelayPort, winePort int) error {
 	log.Printf("[%s] Spinning off VM\n", id)
 
 	params := []string{
@@ -27,6 +27,7 @@ func startVM(id string, videoRelayPort, audioRelayPort, winePort int) error {
 		strconv.Itoa(videoRelayPort),
 		strconv.Itoa(audioRelayPort),
 		strconv.Itoa(winePort),
+		appName,
 	}
 	cmd := exec.Command("./startVM.sh", params...)
 	if err := cmd.Start(); err != nil {
@@ -61,7 +62,12 @@ func sendOffer(wsConn *ws.Connection, offer string) error {
 	})
 }
 
-func startSession(id string, wsConn *ws.Connection) (*webrtc.WebRTC, error) {
+type Configure struct {
+	Device  string `json:"device"`
+	AppName string `json:"appName"`
+}
+
+func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.WebRTC, error) {
 	// Create relaying streams
 	videoStream := make(chan *rtp.Packet, 100)
 	audioStream := make(chan *rtp.Packet, 100)
@@ -104,28 +110,20 @@ func startSession(id string, wsConn *ws.Connection) (*webrtc.WebRTC, error) {
 
 	relayer := stream.NewStreamRelayer(id,
 		videoStream, audioStream, inputStream,
-		videoListener, audioListener, wineListener,
-		settings.ScreenWidth, settings.ScreenHeight)
+		videoListener, audioListener, wineListener)
 	if err := relayer.Start(); err != nil {
 		fmt.Printf("[%s] Couldn't start relaying streams: %s\n", id, err)
 		return nil, err
 	}
 
 	// Start VM
-	if err := startVM(id, videoRelayPort, audioRelayPort, winePort); err != nil {
+	if err := startVM(id, conf.AppName, videoRelayPort, audioRelayPort, winePort); err != nil {
 		log.Printf("[%s] Error when start VM: %s\n", id, err)
 		return nil, err
 	}
 
 	// Start WebRTC
-	webrtcConf := &webrtc.Config{
-		//SinglePort:                 8443,
-		//DisableDefaultInterceptors: true,
-	}
-	webrtcConn, err := webrtc.NewWebRTC(id,
-		videoStream, audioStream, inputStream,
-		webrtcConf,
-	)
+	webrtcConn, err := webrtc.NewWebRTC(id, videoStream, audioStream, inputStream)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +155,7 @@ func startSession(id string, wsConn *ws.Connection) (*webrtc.WebRTC, error) {
 
 		relayer.Close()
 	}
-	offer, err := webrtcConn.StartClient("vpx", onIceCandidateCb, onExitCb)
+	offer, err := webrtcConn.StartClient(settings.VideoCodec, onIceCandidateCb, onExitCb)
 	if err != nil {
 		fmt.Printf("[%s] Couldn't start webrtc client: %s\n", id, err)
 		return nil, err
@@ -206,7 +204,12 @@ func NewSession(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case constants.StartMessage:
-			webrtcConn, err = startSession(sessionId, conn)
+			var conf *Configure
+			if err := json.Unmarshal([]byte(msg.Data), &conf); err != nil {
+				log.Printf("[%s] Error when parse Start message: %s\n", sessionId, err)
+				continue
+			}
+			webrtcConn, err = startSession(sessionId, conn, conf)
 			if err != nil {
 				log.Printf("[%s] Error when starting new session: %s\n", sessionId, err)
 				webrtcConn = nil

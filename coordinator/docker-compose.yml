@@ -5,15 +5,14 @@ services:
     build:
       context: ../appvm
       dockerfile: Dockerfile
+      args:
+        APP_NAME: ${APP_NAME}
     restart: on-failure
     environment:
       - videoport=${VIDEO_PORT}
       - audioport=${AUDIO_PORT}
       - wsport=${WS_PORT}
     env_file:
-      - .env.appvm
+      - ./appconf/${APP_NAME}.env
     volumes:
-      - ../apps:/appvm/apps
-#      - winecfg:/root/.wine
-#volumes:
-#  winecfg:
+      - ../appvm/apps/${APP_NAME}:/appvm/app

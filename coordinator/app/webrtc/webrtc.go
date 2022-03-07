@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"coordinator/pkg/socket"
+	"coordinator/settings"
 	"coordinator/utils"
 
 	"github.com/pion/interceptor"
@@ -35,33 +36,21 @@ type Packet struct {
 type OnIceCallback func(candidate string)
 type OnExitCallback func()
 
-type PortRange struct {
-	Min uint16
-	Max uint16
-}
-
-type Config struct {
-	SinglePort                 int
-	PortRange                  PortRange
-	IceIpMap                   string
-	DisableDefaultInterceptors bool
-}
-
 var (
-	settings    webrtc.SettingEngine
-	settingOnce sync.Once
+	webrtcSettings webrtc.SettingEngine
+	settingOnce    sync.Once
 )
 
 const MaxMissedHealthCheck int = 5
 
-func NewWebRTC(id string, videoStream, audioStream chan *rtp.Packet, inputStream chan *Packet, conf *Config) (*WebRTC, error) {
+func NewWebRTC(id string, videoStream, audioStream chan *rtp.Packet, inputStream chan *Packet) (*WebRTC, error) {
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterDefaultCodecs(); err != nil {
 		return nil, err
 	}
 
 	i := &interceptor.Registry{}
-	if !conf.DisableDefaultInterceptors {
+	if !settings.DisableDefaultInterceptors {
 		if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
 			return nil, err
 		}
@@ -70,12 +59,12 @@ func NewWebRTC(id string, videoStream, audioStream chan *rtp.Packet, inputStream
 	settingOnce.Do(func() {
 		settingEngine := webrtc.SettingEngine{}
 
-		if conf.PortRange.Min > 0 && conf.PortRange.Max > 0 {
-			if err := settingEngine.SetEphemeralUDPPortRange(conf.PortRange.Min, conf.PortRange.Max); err != nil {
+		if settings.PortRange.Min > 0 && settings.PortRange.Max > 0 {
+			if err := settingEngine.SetEphemeralUDPPortRange(settings.PortRange.Min, settings.PortRange.Max); err != nil {
 				panic(err)
 			}
-		} else if conf.SinglePort > 0 {
-			l, err := socket.NewSocketPortRoll("udp", conf.SinglePort)
+		} else if settings.SinglePort > 0 {
+			l, err := socket.NewSocketPortRoll("udp", settings.SinglePort)
 			if err != nil {
 				panic(err)
 			}
@@ -84,17 +73,17 @@ func NewWebRTC(id string, videoStream, audioStream chan *rtp.Packet, inputStream
 			settingEngine.SetICEUDPMux(webrtc.NewICEUDPMux(nil, udpListener))
 		}
 
-		if conf.IceIpMap != "" {
-			settingEngine.SetNAT1To1IPs([]string{conf.IceIpMap}, webrtc.ICECandidateTypeHost)
+		if settings.IceIpMap != "" {
+			settingEngine.SetNAT1To1IPs([]string{settings.IceIpMap}, webrtc.ICECandidateTypeHost)
 		}
 
-		settings = settingEngine
+		webrtcSettings = settingEngine
 	})
 
 	api := webrtc.NewAPI(
 		webrtc.WithMediaEngine(m),
 		webrtc.WithInterceptorRegistry(i),
-		webrtc.WithSettingEngine(settings),
+		webrtc.WithSettingEngine(webrtcSettings),
 	)
 
 	conn, err := api.NewPeerConnection(webrtc.Configuration{

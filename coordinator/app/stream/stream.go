@@ -24,11 +24,9 @@ type StreamRelayer struct {
 	audioListener *net.UDPConn
 	wineConn      *net.TCPConn
 	wineListener  *net.TCPListener
-	screenWidth   float32
-	screenHeight  float32
 }
 
-func NewStreamRelayer(id string, videoStream, audioStream chan *rtp.Packet, eventStream chan *webrtc.Packet, videoListener, audioListener *net.UDPConn, wineListener *net.TCPListener, screenWidth, screenHeight float32) *StreamRelayer {
+func NewStreamRelayer(id string, videoStream, audioStream chan *rtp.Packet, eventStream chan *webrtc.Packet, videoListener, audioListener *net.UDPConn, wineListener *net.TCPListener) *StreamRelayer {
 	s := &StreamRelayer{
 		id:            id,
 		videoStream:   videoStream,
@@ -37,8 +35,6 @@ func NewStreamRelayer(id string, videoStream, audioStream chan *rtp.Packet, even
 		videoListener: videoListener,
 		audioListener: audioListener,
 		wineListener:  wineListener,
-		screenWidth:   screenWidth,
-		screenHeight:  screenHeight,
 	}
 
 	return s
@@ -210,8 +206,11 @@ func (s *StreamRelayer) simulateMouseEvent(jsonPayload string, mouseState int) {
 		return
 	}
 
-	p.X = p.X * s.screenWidth / p.Width
-	p.Y = p.Y * s.screenHeight / p.Height
+	// Original formula: p.X = p.X * s.screenWidth / p.Width
+	// However, syncinput will handle the multiplication with screenWidth to remove the need of configuring screenWidth
+	// Same for p.Y
+	p.X = p.X / p.Width
+	p.Y = p.Y / p.Height
 
 	// Mouse is in format of comma separated "12.4,52.3"
 	vmMouseMsg := fmt.Sprintf("M%d,%d,%f,%f,%f,%f|", p.IsLeft, mouseState, p.X, p.Y, p.Width, p.Height)

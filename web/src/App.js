@@ -83,8 +83,6 @@ function App() {
         ws.send(
           JSON.stringify({
             type: "ice-candidate",
-            sender: "client",
-            receiver: "coordinator",
             data: encodeBase64(JSON.stringify(iceCandidate)),
           })
         );
@@ -97,8 +95,9 @@ function App() {
 
     const msg = {
       type: "start",
-      sender: "client",
-      receiver: "coordinator",
+      data: JSON.stringify({
+        appName: "spider_pc",
+      }),
     };
     ws.send(JSON.stringify(msg));
 
