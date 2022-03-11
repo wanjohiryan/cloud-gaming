@@ -12,6 +12,7 @@ import (
 )
 
 type App struct {
+	ID        string   `yaml:"id" json:"id"`
 	Name      string   `yaml:"name" json:"name"`
 	Type      string   `yaml:"type" json:"type"`
 	PosterURL string   `yaml:"poster_url" json:"posterURL"`
@@ -43,12 +44,20 @@ func init() {
 	}
 }
 
+type Response struct {
+	Error     string      `json:"error"`
+	ErrorCode int         `json:"error_code"`
+	Data      interface{} `json:"data"`
+}
+
 type GetAppListResponse struct {
 	Apps []*App `json:"apps"`
 }
 
 func GetAppList(w http.ResponseWriter, r *http.Request) {
-	resp := GetAppListResponse{Apps: appList}
+	resp := Response{
+		Data: GetAppListResponse{Apps: appList},
+	}
 
 	deviceParams, ok := r.URL.Query()["device"]
 	if ok && len(deviceParams[0]) > 0 {
@@ -61,18 +70,19 @@ func GetAppList(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		resp.Apps = filteredAppList
+		resp = Response{
+			Data: GetAppListResponse{Apps: filteredAppList},
+		}
 	}
 
 	jsonResp, err := json.Marshal(resp)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("Couldn't marshall get app list response to JSON", err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if _, err = w.Write(jsonResp); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	w.Write(jsonResp)
 }

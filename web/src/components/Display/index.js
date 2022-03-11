@@ -4,14 +4,14 @@ import loading from "../../assets/loading.gif";
 
 import "./style.scss";
 
-export default function VideoStream({ src, height, width, inpChannel }) {
+export default function Display({ streamSrc, height, width, inpChannel }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
-    if (!src) return;
+    if (!streamSrc) return;
 
-    videoRef.current.srcObject = src;
-  }, [src]);
+    videoRef.current.srcObject = streamSrc;
+  }, [streamSrc]);
 
   const sendMouseDown = (data) => {
     if (!inpChannel) return;

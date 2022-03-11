@@ -16,7 +16,7 @@ var (
 )
 
 func init() {
-	AllowedOrigins = []string{"*"}
+	AllowedOrigins = []string{"http://localhost:3000"}
 	SinglePort = 8443
 	DisableDefaultInterceptors = false
 
