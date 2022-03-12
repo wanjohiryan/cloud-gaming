@@ -71,7 +71,6 @@ function App() {
     if (inpChannel === null) return;
 
     const onKeyDown = (event) => {
-      console.log("DOWN");
       if (inpChannel.readyState !== "open") return;
 
       inpChannel.send(
