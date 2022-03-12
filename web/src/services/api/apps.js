@@ -9,7 +9,7 @@ export const getAppList = async () => {
   return resp;
 };
 
-const getDevice = () => {
+export const getDevice = () => {
   const ua = navigator.userAgent;
   if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
     return "mobile"; // tablet

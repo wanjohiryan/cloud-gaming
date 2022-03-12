@@ -1,3 +1,6 @@
-.video-stream__video {
+.display__video {
+  height: 600px;
+  width: 800px;
   object-fit: scale-down;
+  border: 2px solid #b81d24;
 }

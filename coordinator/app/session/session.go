@@ -63,8 +63,8 @@ func sendOffer(wsConn *ws.Connection, offer string) error {
 }
 
 type Configure struct {
-	Device  string `json:"device"`
-	AppName string `json:"appName"`
+	Device string `json:"device"`
+	AppID  string `json:"appID"`
 }
 
 func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.WebRTC, error) {
@@ -117,7 +117,8 @@ func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.We
 	}
 
 	// Start VM
-	if err := startVM(id, conf.AppName, videoRelayPort, audioRelayPort, winePort); err != nil {
+	appName := fmt.Sprintf("%s_%s", conf.AppID, conf.Device)
+	if err := startVM(id, appName, videoRelayPort, audioRelayPort, winePort); err != nil {
 		log.Printf("[%s] Error when start VM: %s\n", id, err)
 		return nil, err
 	}
@@ -188,7 +189,7 @@ func NewSession(w http.ResponseWriter, r *http.Request) {
 	for {
 		rawMsg, err := conn.ReadText()
 		if err != nil {
-			if closeErr, ok := err.(*websocket.CloseError); ok && closeErr.Code == websocket.CloseGoingAway {
+			if _, ok := err.(*websocket.CloseError); ok {
 				return
 			}
 

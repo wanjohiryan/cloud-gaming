@@ -1,15 +1,16 @@
 package main
 
 import (
-	"coordinator/settings"
 	"flag"
 	"fmt"
-	"github.com/rs/cors"
 	"log"
 	"net/http"
 
 	"coordinator/app/apps"
 	"coordinator/app/session"
+	"coordinator/settings"
+
+	"github.com/rs/cors"
 )
 
 var port = flag.Int("port", 8080, "server port address")

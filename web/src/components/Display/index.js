@@ -1,10 +1,10 @@
 import React, { useRef, useEffect } from "react";
 
-import loading from "../../assets/loading.gif";
+import loading from "../../assets/loading.svg";
 
 import "./style.scss";
 
-export default function Display({ streamSrc, height, width, inpChannel }) {
+export default function Display({ streamSrc, inpChannel }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -89,17 +89,17 @@ export default function Display({ streamSrc, height, width, inpChannel }) {
   };
 
   return (
-    <video
-      className="video-stream__video"
-      poster={loading}
-      height={height}
-      width={width}
-      ref={videoRef}
-      autoPlay
-      onMouseDown={onMouseDown}
-      onMouseUp={onMouseUp}
-      onMouseMove={onMouseMove}
-      onContextMenu={onContextMenu}
-    />
+    <div className="display">
+      <video
+        className="display__video"
+        poster={loading}
+        ref={videoRef}
+        autoPlay
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onMouseMove={onMouseMove}
+        onContextMenu={onContextMenu}
+      />
+    </div>
   );
 }
