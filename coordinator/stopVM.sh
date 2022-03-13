@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker-compose -p "$1" down
+APP_NAME="$2" docker-compose -p "$1" down

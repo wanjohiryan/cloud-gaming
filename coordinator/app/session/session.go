@@ -3,6 +3,7 @@ package session
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"os/exec"
@@ -37,10 +38,14 @@ func startVM(id string, appName string, videoRelayPort, audioRelayPort, winePort
 	return nil
 }
 
-func stopVM(id string) error {
+func stopVM(id, appName string) error {
 	log.Printf("[%s] Stopping VM\n", id)
 
-	cmd := exec.Command("./stopVM.sh", id)
+	params := []string{
+		id,
+		appName,
+	}
+	cmd := exec.Command("./stopVM.sh", params...)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -118,7 +123,8 @@ func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.We
 
 	// Start VM
 	appName := fmt.Sprintf("%s_%s", conf.AppID, conf.Device)
-	if err := startVM(id, appName, videoRelayPort, audioRelayPort, winePort); err != nil {
+	appId := fmt.Sprintf("%s_%s", id, uuid.New().String())
+	if err := startVM(appId, appName, videoRelayPort, audioRelayPort, winePort); err != nil {
 		log.Printf("[%s] Error when start VM: %s\n", id, err)
 		return nil, err
 	}
@@ -138,7 +144,7 @@ func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.We
 	onExitCb := func() {
 		log.Printf("[%s] Releasing allocated resources", id)
 
-		if err := stopVM(id); err != nil {
+		if err := stopVM(appId, appName); err != nil {
 			log.Printf("[%s] Error when stopping VM: %s\n", id, err)
 		}
 
