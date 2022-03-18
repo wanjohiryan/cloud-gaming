@@ -4,6 +4,8 @@ This project allows users to play computer games on browsers, without download o
 This means that users can play AAA games on their low-spec computers or smartphones or even smart TVs anywhere and anytime.
 The only requirement is fast and reliable internet.
 
+An extension that allows users to let other users play games on their computers and make money is [Cope Gaming](https://github.com/hxt365/CopeGaming).
+
 ![Playing Demo](https://user-images.githubusercontent.com/16115992/158131855-dcc0ff60-df98-491c-aaea-a2eca76bb228.gif)
 
 ## How to run
