@@ -16,6 +16,7 @@ var (
 )
 
 func init() {
+	// react port
 	AllowedOrigins = []string{"http://localhost:3000"}
 	SinglePort = 8443
 	DisableDefaultInterceptors = false

@@ -49,4 +49,12 @@ RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o ./syncinput.exe -lws2_32 -lpthread
 ARG APP_NAME
 COPY apps/${APP_NAME}/setup/ /root/.wine/
 
+#Copy web folder into docker
+ADD web/ $HOME/web/
+
+#Copy coordinator (go-server) into container
+ADD coordinator/ $HOME/coordinator
+
+EXPOSE 3000
+
 ENTRYPOINT ["supervisord"]
