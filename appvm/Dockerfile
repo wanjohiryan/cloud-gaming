@@ -7,6 +7,10 @@ RUN apt update \
     && apt-get clean \
     && apt-get autoremove
 
+#Install nodejs and go
+RUN apt install nodejs \
+    && apt install golang-go
+
 # Install wine
 ARG WINE_BRANCH="stable"
 RUN wget -nv -O- https://dl.winehq.org/wine-builds/winehq.key | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=1 apt-key add - \
