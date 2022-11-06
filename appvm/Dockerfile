@@ -43,7 +43,7 @@ RUN apt-get update \
 RUN node -v
 
 #install go
-ARG GO_VERSION = 1.19.3
+ARG GO_VERSION=1.19.3
 ENV GO_VERSION=${GO_VERSION}
 
 RUN apt-get update \
