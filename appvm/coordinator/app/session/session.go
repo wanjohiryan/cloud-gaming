@@ -8,8 +8,6 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/google/uuid"
-
 	"coordinator/app/stream"
 	"coordinator/app/webrtc"
 	"coordinator/app/ws"
@@ -122,13 +120,13 @@ func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.We
 		return nil, err
 	}
 
-	// Start VM
-	appName := fmt.Sprintf("%s_%s", conf.AppID, conf.Device)
-	appId := fmt.Sprintf("%s_%s", id, uuid.New().String())
-	if err := startVM(appId, appName, videoRelayPort, audioRelayPort, winePort); err != nil {
-		log.Printf("[%s] Error when start VM: %s\n", id, err)
-		return nil, err
-	}
+	// Start VM //!Arleady done
+	// appName := fmt.Sprintf("%s_%s", conf.AppID, conf.Device)
+	// appId := fmt.Sprintf("%s_%s", id, uuid.New().String())
+	// if err := startVM(appId, appName, videoRelayPort, audioRelayPort, winePort); err != nil {
+	// 	log.Printf("[%s] Error when start VM: %s\n", id, err)
+	// 	return nil, err
+	// }
 
 	// Start WebRTC
 	webrtcConn, err := webrtc.NewWebRTC(id, videoStream, audioStream, inputStream)
@@ -145,9 +143,11 @@ func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.We
 	onExitCb := func() {
 		log.Printf("[%s] Releasing allocated resources", id)
 
-		if err := stopVM(appId, appName); err != nil {
-			log.Printf("[%s] Error when stopping VM: %s\n", id, err)
-		}
+		//TODO:return something here
+
+		// if err := stopVM(appId, appName); err != nil {
+		// 	log.Printf("[%s] Error when stopping VM: %s\n", id, err)
+		// }
 
 		// Must close webrtc connection first to ensure no writing to closed inputStream
 		webrtcConn.StopClient()
