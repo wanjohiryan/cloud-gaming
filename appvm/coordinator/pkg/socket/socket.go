@@ -103,6 +103,30 @@ func newRandomAvailableListener(proto string) (interface{}, error) {
 	return nil, nil
 }
 
+func NewVideoUDPListener() (*net.UDPConn, error) {
+	l, err := net.ListenUDP("udp", &net.UDPAddr{Port: 5004}) //hard coded the video port in to match docker container
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
+func NewAudioUDPListener() (*net.UDPConn, error) {
+	l, err := net.ListenUDP("udp", &net.UDPAddr{Port: 4004})// hard coded the audio port to match docker container
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
+func NewWinTCPListener() (*net.TCPListener, error) {
+	l, err := net.ListenTCP("tcp", &net.TCPAddr{Port: 9090})// hard coded the winapi port to match docker container
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
 func ExtractPort(addr string) (int, error) {
 	port, err := strconv.Atoi(addr[strings.LastIndex(addr, ":")+1:])
 	if err != nil {

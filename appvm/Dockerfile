@@ -33,11 +33,34 @@ RUN winetricks d3dx9_43
 # Silence all fixme warnings from wine
 ENV WINEDEBUG fixme-all
 
-#Install nodejs and go
-RUN apt-get install  --no-install-recommends --assume-yes \
-    nodejs\
-    golang-go
-    
+#Install nodejs
+RUN apt-get update \
+    && apt-get install curl  --no-install-recommends --assume-yes \
+    &&  curl -sL https://deb.nodesource.com/setup_14.x | bash \
+    && apt-get install nodejs
+
+#test if node was installed
+RUN node -v
+
+#install go
+ARG GO_VERSION = 1.19.3
+ENV GO_VERSION=${GO_VERSION}
+
+RUN apt-get update \
+   && apt-get install -y git gcc \
+   && wget -P /tmp "https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz" \
+   && tar -C /usr/local -xzf "/tmp/go${GO_VERSION}.linux-amd64.tar.gz" \
+   && rm "/tmp/go${GO_VERSION}.linux-amd64.tar.gz"
+
+ENV GOPATH /go
+
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
+
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+
+#test if go is installed
+RUN go version 
+
 WORKDIR /appvm
 
 #Copy web folder into container

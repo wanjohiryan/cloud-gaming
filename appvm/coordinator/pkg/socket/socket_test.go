@@ -1,10 +1,11 @@
 package socket
 
 import (
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFailOnPortInUse(t *testing.T) {
@@ -33,11 +34,11 @@ func TestListenerPortRoll(t *testing.T) {
 }
 
 func TestNewRandomUDPListener(t *testing.T) {
-	l1, err := NewRandomUDPListener()
+	l1, err := NewVideoUDPListener()
 	require.NoError(t, err)
 	defer l1.Close()
 
-	l2, err := NewRandomUDPListener()
+	l2, err := NewAudioUDPListener()
 	require.NoError(t, err)
 	defer l2.Close()
 
@@ -45,11 +46,11 @@ func TestNewRandomUDPListener(t *testing.T) {
 }
 
 func TestNewRandomTCPListener(t *testing.T) {
-	l1, err := NewRandomTCPListener()
+	l1, err := NewWinTCPListener()
 	require.NoError(t, err)
 	defer l1.Close()
 
-	l2, err := NewRandomTCPListener()
+	l2, err := NewWinTCPListener()
 	require.NoError(t, err)
 	defer l2.Close()
 

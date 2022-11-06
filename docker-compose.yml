@@ -10,7 +10,7 @@ services:
     restart: on-failure
     container_name: qwantify-${APP_NAME}
     # runtime: nvidia
-    gpus: all #optional pass in all nvidia gpus
+    #gpus: all #optional pass in all nvidia gpus
     ports:
       - 3000:3000
     environment:

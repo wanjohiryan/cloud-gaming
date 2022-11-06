@@ -3,11 +3,12 @@ package session
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"os/exec"
 	"strconv"
+
+	"github.com/google/uuid"
 
 	"coordinator/app/stream"
 	"coordinator/app/webrtc"
@@ -20,10 +21,38 @@ import (
 	"github.com/pion/rtp"
 )
 
-var curVideoRTPPort = constants.startVideoRTPPort
-var curAudioRTPPort = constants.startAudioRTPPort
-var curWinePort  = constants.WineConnPort
+func startVM(id string, appName string, videoRelayPort, audioRelayPort, winePort int) error {
+	log.Printf("[%s] Spinning off VM\n", id)
 
+	params := []string{
+		id,
+		strconv.Itoa(videoRelayPort),
+		strconv.Itoa(audioRelayPort),
+		strconv.Itoa(winePort),
+		appName,
+	}
+	cmd := exec.Command("./startVM.sh", params...)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func stopVM(id, appName string) error {
+	log.Printf("[%s] Stopping VM\n", id)
+
+	params := []string{
+		id,
+		appName,
+	}
+	cmd := exec.Command("./stopVM.sh", params...)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func sendIceCandidate(wsConn *ws.Connection, candidate string) error {
 	return wsConn.Send(ws.Message{
@@ -50,12 +79,36 @@ func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.We
 	audioStream := make(chan *rtp.Packet, 100)
 	inputStream := make(chan *webrtc.Packet, 100)
 
-
-	videoRelayPort = curVideoRTPPort
-	
-	audioRelayPort =  curAudioRTPPort
-
-	winePort = curWinePort
+	videoListener, err := socket.NewVideoUDPListener()
+	if err != nil {
+		log.Printf("[%s] Couldn't create a UDP listener for video: %s\n", id, err)
+		return nil, err
+	}
+	videoRelayPort, err := socket.ExtractPort(videoListener.LocalAddr().String())
+	if err != nil {
+		log.Printf("[%s] Couldn't extract UDP port for video: %s\n", id, err)
+		return nil, err
+	}
+	audioListener, err := socket.NewAudioUDPListener()
+	if err != nil {
+		log.Printf("[%s] Couldn't create a UDP listener for audio: %s\n", id, err)
+		return nil, err
+	}
+	audioRelayPort, err := socket.ExtractPort(audioListener.LocalAddr().String())
+	if err != nil {
+		log.Printf("[%s] Couldn't extract UDP port for audio: %s\n", id, err)
+		return nil, err
+	}
+	wineListener, err := socket.NewWinTCPListener()
+	if err != nil {
+		log.Printf("[%s] Couldn't create a TCP listener for wine: %s\n", id, err)
+		return nil, err
+	}
+	winePort, err := socket.ExtractPort(wineListener.Addr().String())
+	if err != nil {
+		log.Printf("[%s] Couldn't extract TCP port for wine: %s\n", id, err)
+		return nil, err
+	}
 
 	log.Printf("[%s] Wait for video at port %d\n", id, videoRelayPort)
 	log.Printf("[%s] Wait for audio at port %d\n", id, audioRelayPort)
@@ -69,8 +122,13 @@ func startSession(id string, wsConn *ws.Connection, conf *Configure) (*webrtc.We
 		return nil, err
 	}
 
+	// Start VM
 	appName := fmt.Sprintf("%s_%s", conf.AppID, conf.Device)
 	appId := fmt.Sprintf("%s_%s", id, uuid.New().String())
+	if err := startVM(appId, appName, videoRelayPort, audioRelayPort, winePort); err != nil {
+		log.Printf("[%s] Error when start VM: %s\n", id, err)
+		return nil, err
+	}
 
 	// Start WebRTC
 	webrtcConn, err := webrtc.NewWebRTC(id, videoStream, audioStream, inputStream)
