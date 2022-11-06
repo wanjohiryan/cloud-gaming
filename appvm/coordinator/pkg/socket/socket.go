@@ -103,22 +103,6 @@ func newRandomAvailableListener(proto string) (interface{}, error) {
 	return nil, nil
 }
 
-func NewRandomUDPListener() (*net.UDPConn, error) {
-	l, err := net.ListenUDP("udp", &net.UDPAddr{Port: 0})
-	if err != nil {
-		return nil, err
-	}
-	return l, nil
-}
-
-func NewRandomTCPListener() (*net.TCPListener, error) {
-	l, err := net.ListenTCP("tcp", &net.TCPAddr{Port: 0})
-	if err != nil {
-		return nil, err
-	}
-	return l, nil
-}
-
 func ExtractPort(addr string) (int, error) {
 	port, err := strconv.Atoi(addr[strings.LastIndex(addr, ":")+1:])
 	if err != nil {

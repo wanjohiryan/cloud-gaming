@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  appvm:
+    build:
+      context: ./appvm
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: ${APP_NAME}
+    restart: on-failure
+    container_name: qwantify-${APP_NAME}
+    # runtime: nvidia
+    gpus: all #optional pass in all nvidia gpus
+    ports:
+      - 3000:3000
+    environment:
+      - screenwidth=${WIDTH}
+      - screenheight=${HEIGHT}
+    env_file:
+      - ./appconf/${APP_NAME}.env
+    devices:
+      - /dev/dri:/dev/dri #optional pass in intel and amd gpus
+    volumes:
+      - ./appvm/apps/${APP_NAME}:/appvm/app

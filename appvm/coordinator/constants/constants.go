@@ -11,6 +11,8 @@ const RetryMessage MessageType = "retry"
 const Relayer = "relayer"
 const Coordinator = "coordinator"
 
+const startVideoRTPPort = 5004
+const startAudioRTPPort = 4004
 const WineConnPort = 9090
 const KeyUp = "KEYUP"
 const KeyDown = "KEYDOWN"

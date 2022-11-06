@@ -7,9 +7,6 @@ RUN apt update \
     && apt-get clean \
     && apt-get autoremove
 
-#Install nodejs and go
-RUN apt install nodejs \
-    && apt install golang-go
 
 # Install wine
 ARG WINE_BRANCH="stable"
@@ -36,6 +33,21 @@ RUN winetricks d3dx9_43
 # Silence all fixme warnings from wine
 ENV WINEDEBUG fixme-all
 
+#Install nodejs and go
+RUN apt-get install  --no-install-recommends --assume-yes \
+    nodejs\
+    golang-go
+    
+WORKDIR /appvm
+
+#Copy web folder into container
+COPY ./web/ /web/
+
+WORKDIR /web
+
+# add node_modules
+RUN npm install
+
 WORKDIR /appvm
 
 COPY default.pa /etc/pulse/
@@ -49,11 +61,8 @@ RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o ./syncinput.exe -lws2_32 -lpthread
 ARG APP_NAME
 COPY apps/${APP_NAME}/setup/ /root/.wine/
 
-#Copy web folder into docker
-ADD web/ $HOME/web/
-
 #Copy coordinator (go-server) into container
-ADD coordinator/ $HOME/coordinator
+COPY ./coordinator/ /coordinator/
 
 EXPOSE 3000
 
