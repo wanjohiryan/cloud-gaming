@@ -6,19 +6,18 @@ services:
       context: ./appvm
       dockerfile: Dockerfile
       args:
-        APP_NAME: ${APP_NAME}
+        APP_NAME: tarzan_pc #${APP_NAME}
     restart: on-failure
-    container_name: qwantify-${APP_NAME}
-    # runtime: nvidia
-    #gpus: all #optional pass in all nvidia gpus
+    container_name: qwantify-tarzan_pc
+    command: supervisord #run supervisord on container run
     ports:
       - 3000:3000
     environment:
-      - screenwidth=${WIDTH}
-      - screenheight=${HEIGHT}
-    env_file:
-      - ./appconf/${APP_NAME}.env
-    devices:
-      - /dev/dri:/dev/dri #optional pass in intel and amd gpus
+      - screenwidth=1280
+      - screenheight=1024
+      - appname=Tarzan
+      - apppath=/appvm/apps/tarzan_pc/game/
+      - appfile=tarzan.exe
     volumes:
-      - ./appvm/apps/${APP_NAME}:/appvm/app
+      - ./appvm/apps:/appvm/apps #map game files onto the docker container for wine
+      - ./appvm/apps/tarzan_pc/setup/:/root/.wine/ #moved from Dockerfile

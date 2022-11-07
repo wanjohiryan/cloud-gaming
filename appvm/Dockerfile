@@ -74,13 +74,13 @@ COPY syncinput.cpp ./syncinput.cpp
 # Compile syncinput.cpp
 RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o ./syncinput.exe -lws2_32 -lpthread -static
 
-# Add reg files to wineprefix
-ARG APP_NAME
-COPY apps/${APP_NAME}/setup/ /root/.wine/
+ # Add reg files to wineprefix
+# ARG APP_NAME
+# COPY apps/${APP_NAME}/setup/ /root/.wine/  #!removed this to prevent rebuilding the image each time an app changes
 
 #Copy coordinator (go-server) into container
 COPY ./coordinator/ /coordinator/
 
 EXPOSE 3000
 
-ENTRYPOINT ["supervisord"]
+# ENTRYPOINT ["supervisord"] #!removed this to allow for ssh
