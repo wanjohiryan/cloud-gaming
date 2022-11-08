@@ -21,7 +21,15 @@ function App() {
     setTimeout(() => {
       setWelcoming(false);
     }, 2500);
-  });
+    selectApp("any")
+  },[]);
+
+  // useEffect(()=>{
+  //   setTimeout(() => {
+  //     setWelcoming(false);
+  //   }, 2500);
+  //   selectApp("any")//testing purposes only
+  // },[])
 
   useEffect(() => {
     const ws = new WebSocket(process.env.REACT_APP_WS_ENDPOINT);
