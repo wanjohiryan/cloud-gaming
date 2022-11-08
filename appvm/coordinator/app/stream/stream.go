@@ -82,7 +82,7 @@ func (s *StreamRelayer) Start() error {
 	go func() {
 		<-wineConnected
 
-		go s.healthCheckVM()
+		// go s.healthCheckVM()
 		go s.handleAppEvents()
 		go s.relayStream(s.videoListener, s.videoStream)
 		go s.relayStream(s.audioListener, s.audioStream)

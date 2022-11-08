@@ -1,5 +1,4 @@
 #include <iostream>
-#include <csignal>
 #include <windows.h>
 // #include <psapi.h>
 #include <vector>
@@ -7,32 +6,24 @@
 #include <pthread.h>
 #include <ctime>
 #include <chrono>
-
 using namespace std;
 
 int screenWidth, screenHeight;
-int wineScreenWidth, wineScreenHeight;
 int server; // TODO: Move to local variable
 chrono::_V2::system_clock::time_point last_ping;
 bool done;
 HWND hwnd;
 char *winTitle;
 char dockerHost[20];
-string hostAddr;
-int hostPort;
+string hardcodeIP;
+bool isMac;
+bool isWindows;
 
 const byte MOUSE_MOVE = 0;
 const byte MOUSE_DOWN = 1;
 const byte MOUSE_UP = 2;
 const byte KEY_UP = 0;
 const byte KEY_DOWN = 1;
-
-string hostToIp(const string& host) {
-    hostent* hostname = gethostbyname(host.c_str());
-    if (hostname)
-        return string(inet_ntoa(**(in_addr**)hostname->h_addr_list));
-    return host;
-}
 
 int clientConnect()
 {
@@ -44,11 +35,47 @@ int clientConnect()
     int server = socket(AF_INET, SOCK_STREAM, 0);
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(hostPort);
+    addr.sin_port = htons(9090);
+    if (isMac)
+    {
+        // Mac doesn't have host mode in docker, hence need to get local docker address
+        char ip[100];
+        struct hostent *he;
+        struct in_addr **addr_list;
+        if ((he = gethostbyname("host.docker.internal")) == NULL)
+        {
+            //gethostbyname failed
+            printf("gethostbyname failed : %d", WSAGetLastError());
+            return 1;
+        }
+        //Cast the h_addr_list to in_addr , since h_addr_list also has the ip address in long format only
+        addr_list = (struct in_addr **)he->h_addr_list;
+        for (int i = 0; addr_list[i] != NULL; i++)
+        {
+            //Return the first one;
+            strcpy(ip, inet_ntoa(*addr_list[i]));
+        }
 
-    cout << "Address\n";
-    cout << hostToIp(hostAddr) << ":" << hostPort << endl;
-    addr.sin_addr.s_addr = inet_addr(hostToIp(hostAddr).c_str());
+        cout << "using host docker internal" << endl;
+        cout << "ip from hostname: " << ip << endl;
+        addr.sin_addr.s_addr = inet_addr(ip);
+    }
+    else if (isWindows)
+    {
+        if (hardcodeIP != "")
+        {
+            cout << "Running with hardcode IP" << hardcodeIP << endl;
+            addr.sin_addr.s_addr = inet_addr(hardcodeIP.c_str());
+        }
+        else
+        {
+            addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        }
+    }
+    else
+    {
+        addr.sin_addr.s_addr = INADDR_ANY;
+    }
 
     cout << "Connecting to server!" << endl;
     connect(server, reinterpret_cast<SOCKADDR *>(&addr), sizeof(addr));
@@ -94,7 +121,7 @@ HWND getWindowByTitle(char *pattern)
             return hwnd;
         }
     } while (hwnd != 0);
-    cout << "Not found" << endl;
+    cout << "Not found";
     return hwnd; //Ignore that
 }
 
@@ -164,8 +191,6 @@ void MouseMove(int x, int y)
 
 void sendMouseDown(bool isLeft, byte state, float x, float y)
 {
-    x *= wineScreenWidth;
-    y *= wineScreenHeight;
     cout << x << ' ' << y << endl;
     INPUT Input = {0};
     ZeroMemory(&Input, sizeof(INPUT));
@@ -174,6 +199,7 @@ void sendMouseDown(bool isLeft, byte state, float x, float y)
 
     if (isLeft && state == MOUSE_DOWN)
     {
+
         Input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_ABSOLUTE;
     }
     else if (isLeft && state == MOUSE_UP)
@@ -271,7 +297,7 @@ void *thealthcheck(void *args)
         {
             // socket is died
             cout << "Broken pipe" << endl;
-            raise(SIGINT);
+            done = true;
             return NULL;
         }
         Sleep(2000);
@@ -316,14 +342,12 @@ void processEvent(string ev, bool isDxGame)
     }
 }
 
-void exitSignalHandler(int signal) {
-    exit(1);
-}
-
 int main(int argc, char *argv[])
 {
     winTitle = (char *)"Notepad";
     bool isDxGame = false;
+    isMac = false;
+    isWindows = false;
     cout << "args" << endl;
     if (argc > 1)
     {
@@ -340,23 +364,21 @@ int main(int argc, char *argv[])
     }
     if (argc > 3)
     {
-        cout << "HOST " << argv[3] << endl;
-        hostAddr = argv[3];
+        cout << argv[3] << endl;
+        if (strcmp(argv[3], "host.docker.internal") == 0)
+        {
+            isMac = true;
+            cout << "Running syncinput on Mac";
+        }
+        else if (strcmp(argv[3], "windows") == 0)
+        {
+            isWindows = true;
+            cout << "Running syncinput on Windows";
+        }
     }
     if (argc > 4)
     {
-        cout << "PORT " << argv[4] << endl;
-        hostPort = stoi(argv[4]);
-    }
-    if (argc > 5)
-    {
-        cout << "Wine screen width " << argv[5] << endl;
-        wineScreenWidth = stoi(argv[5]);
-    }
-    if (argc > 6)
-    {
-        cout << "Wine screen height " << argv[6] << endl;
-        wineScreenHeight = stoi(argv[6]);
+        hardcodeIP = argv[4];
     }
 
     server = clientConnect();
@@ -366,7 +388,8 @@ int main(int argc, char *argv[])
     getDesktopResolution(screenWidth, screenHeight);
     cout << "width " << screenWidth << " "
          << "height " << screenHeight << endl;
-    cout << "host address " << hostAddr << endl;
+    cout << "isMac " << isMac << "isWindows " << isWindows << endl;
+    cout << "harcode IP " << hardcodeIP << endl;
 
     formatWindow(hwnd);
 
@@ -375,8 +398,6 @@ int main(int argc, char *argv[])
     last_ping = chrono::system_clock::now();
     pthread_t th1;
     pthread_t th2;
-
-    signal(SIGINT, exitSignalHandler);
 
     int t1 = pthread_create(&th1, NULL, thealthcheck, NULL);
     int t2 = pthread_create(&th2, NULL, thwndupdate, NULL);
@@ -388,6 +409,10 @@ int main(int argc, char *argv[])
 
     do
     {
+        if (done)
+        {
+            exit(1);
+        }
         //Receive a reply from the server
         if ((recv_size = recv(server, buf, 1024, 0)) == SOCKET_ERROR)
         {

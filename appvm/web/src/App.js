@@ -195,15 +195,16 @@ function App() {
   return (
     <div className="App">
       {welcoming && <Welcoming />}
-      {selectedApp !== "" ? (
-        <AppPlayer
+      <AppPlayer
           videoStream={videoStream}
           inpChannel={inpChannel}
           onCloseApp={closeApp}
         />
+      {/* {selectedApp !== "" ? (
+       
       ) : (
         <AppChoice onSelectApp={selectApp} />
-      )}
+      )} */}
     </div>
   );
 }

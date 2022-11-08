@@ -16,8 +16,8 @@ services:
       - screenwidth=1280
       - screenheight=1024
       - appname=Tarzan
-      - apppath=/appvm/apps/tarzan_pc/game/
+      - apppath=/appvm/apps/tarzan_pc/game
       - appfile=tarzan.exe
+      #- wineoptions=
     volumes:
       - ./appvm/apps:/appvm/apps #map game files onto the docker container for wine
-      - ./appvm/apps/tarzan_pc/setup/:/root/.wine/ #moved from Dockerfile
