@@ -195,7 +195,7 @@ export default function Home() {
       <Head>
         <title>qwantify</title>
         <meta name="description" content="Game at the speed of thought" />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/logo.png" />
       </Head>
 
       <AppPlayer
