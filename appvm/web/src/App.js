@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import AppChoice from "./views/AppChoice";
 import AppPlayer from "./views/AppPlayer";
 
 import { decodeBase64, encodeBase64 } from "./utils";
@@ -21,7 +20,7 @@ function App() {
     setTimeout(() => {
       setWelcoming(false);
     }, 2500);
-    selectApp("any")
+    selectApp("any");
   },[]);
 
   // useEffect(()=>{
@@ -208,11 +207,6 @@ function App() {
           inpChannel={inpChannel}
           onCloseApp={closeApp}
         />
-      {/* {selectedApp !== "" ? (
-       
-      ) : (
-        <AppChoice onSelectApp={selectApp} />
-      )} */}
     </div>
   );
 }
