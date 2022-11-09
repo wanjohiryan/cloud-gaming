@@ -1,0 +1,16 @@
+.app_player {
+    &__close {
+      position: absolute;
+      right: 2rem;
+      top: 2rem;
+  
+      color: #00e1fdff;
+      font-size: 1.4rem;
+      border: none;
+      background-color: transparent;
+  
+      &:hover {
+        color: #fc007aff;
+      }
+    }
+  }

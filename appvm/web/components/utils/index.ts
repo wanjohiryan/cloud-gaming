@@ -1,12 +1,13 @@
-import axiosClient from "./axios";
+import { Buffer } from "buffer";
 
-const APP_LIST_API = "apps";
+export const decodeBase64 = (b64str:string) => {
+  const b = Buffer.from(b64str, "base64");
+  return b.toString();
+};
 
-export const getAppList = async () => {
-  const device = getDevice();
-  const url = `${APP_LIST_API}?device=${device}`;
-  const resp = await axiosClient.get(url);
-  return resp;
+export const encodeBase64 = (str:string) => {
+  const b = Buffer.from(str);
+  return b.toString("base64");
 };
 
 export const getDevice = () => {

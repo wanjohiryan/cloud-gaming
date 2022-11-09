@@ -33,12 +33,6 @@ RUN winetricks d3dx9_43
 # Silence all fixme warnings from wine
 ENV WINEDEBUG fixme-all
 
-#Install nodejs
-RUN apt-get update \
-    && apt-get install curl  -y \
-    &&  curl -sL https://deb.nodesource.com/setup_14.x | bash \
-    && apt-get install nodejs -y
-
 #install go
 ARG GO_VERSION=1.19.3
 ENV GO_VERSION=${GO_VERSION}
@@ -54,6 +48,12 @@ ENV GOPATH /go
 ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
 RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+
+#Install nodejs
+RUN apt-get update \
+    && apt-get install curl  -y \
+    &&  curl -sL https://deb.nodesource.com/setup_18.x | bash \
+    && apt-get install nodejs -y
 
 WORKDIR /appvm
 
@@ -73,10 +73,6 @@ COPY syncinput.cpp ./syncinput.cpp
 
 # Compile syncinput.cpp
 RUN x86_64-w64-mingw32-g++ ./syncinput.cpp -o ./syncinput.exe -lws2_32 -lpthread -static
-
- # Add reg files to wineprefix
-# ARG APP_NAME
-# COPY apps/${APP_NAME}/setup/ /root/.wine/  #!removed this to prevent rebuilding the image each time an app changes
 
 #Copy coordinator (go-server) into container
 COPY ./coordinator/ /coordinator/

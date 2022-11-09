@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 
-	"coordinator/app/apps"
 	"coordinator/app/session"
 	"coordinator/settings"
 
@@ -19,7 +18,7 @@ func main() {
 	flag.Parse()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/apps", apps.GetAppList)
+	// mux.HandleFunc("/apps", apps.GetAppList)
 	mux.HandleFunc("/ws", session.NewSession)
 
 	c := cors.New(cors.Options{

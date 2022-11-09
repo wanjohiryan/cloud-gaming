@@ -1,40 +1,30 @@
-import React, { useState, useEffect } from "react";
-import AppPlayer from "./views/AppPlayer";
+import React, { useState, useEffect } from "react"
+import Head from 'next/head'
+import styles from '../styles/Home.module.scss'
+import { decodeBase64, encodeBase64, getDevice } from "../components/utils";
+import { addIceCandidate, addRemoteSdp } from "../components/services/webrtc";
+import AppPlayer from "../components/AppPlayer";
 
-import { decodeBase64, encodeBase64 } from "./utils";
-import { addRemoteSdp, addIceCandidate } from "./services/webrtc";
-import { getDevice } from "./services/api/apps";
+const ws_endpont = process.env.NEXT_PUBLIC_WS_ENDPOINT;
+const selectedApp = "3jeododi";
 
-import "./App.scss";
-import Welcoming from "./views/Welcoming";
-
-function App() {
+export default function Home() {
   const [welcoming, setWelcoming] = useState(true);
-  const [ws, setWs] = useState(null);
-  const [pc, setPc] = useState(null);
-  const [inpChannel, setInpChannel] = useState(null);
-  const [videoStream, setVideoStream] = useState(null);
-  const [selectedApp, setSelectedApp] = useState("");
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [pc, setPc] = useState<RTCPeerConnection | null>(null);
+  const [inpChannel, setInpChannel] = useState<null | RTCDataChannel>(null);
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 
   useEffect(() => {
-    setTimeout(() => {
-      setWelcoming(false);
-    }, 2500);
-    selectApp("any");
-  },[]);
+    const ws = new WebSocket(ws_endpont);
 
-  // useEffect(()=>{
-  //   setTimeout(() => {
-  //     setWelcoming(false);
-  //   }, 2500);
-  //   selectApp("any")//testing purposes only
-  // },[])
-
-  useEffect(() => {
-    const ws = new WebSocket(process.env.REACT_APP_WS_ENDPOINT);
+    console.log("ws log", ws)
 
     ws.onopen = () => {
       setWs(ws);
+
+      console.log("ws opened", ws)
+
     };
 
     ws.onerror = () => {
@@ -45,39 +35,39 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (pc === null) return;
+    if (pc !== null && ws !== null) {
+      const msg = {//this will be removed
+        type: "start",
+        data: JSON.stringify({
+          appID: selectedApp,
+          device: getDevice(),
+        }),
+      };
+      ws.send(JSON.stringify(msg));
 
-    const msg = {
-      type: "start",
-      data: JSON.stringify({
-        appID: selectedApp,
-        device: getDevice(),
-      }),
-    };
-    ws.send(JSON.stringify(msg));
-
-    ws.onmessage = async (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === "sdp") {
-        const offer = JSON.parse(decodeBase64(msg.data));
-        const answer = await addRemoteSdp(pc, offer);
-        ws.send(
-          JSON.stringify({
-            type: "sdp",
-            data: encodeBase64(JSON.stringify(answer)),
-          })
-        );
-      } else if (msg.type === "ice-candidate") {
-        const ice = JSON.parse(decodeBase64(msg.data));
-        addIceCandidate(pc, ice);
-      }
+      ws.onmessage = async (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "sdp") {
+          const offer = JSON.parse(decodeBase64(msg.data));
+          const answer = await addRemoteSdp(pc, offer);
+          ws.send(
+            JSON.stringify({
+              type: "sdp",
+              data: encodeBase64(JSON.stringify(answer)),
+            })
+          );
+        } else if (msg.type === "ice-candidate") {
+          const ice = JSON.parse(decodeBase64(msg.data));
+          addIceCandidate(pc, ice);
+        }
+      };
     };
   }, [pc]);
 
+
   useEffect(() => {
     if (inpChannel === null) return;
-
-    const onKeyDown = (event) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (inpChannel.readyState !== "open") return;
 
       inpChannel.send(
@@ -90,7 +80,7 @@ function App() {
       );
     };
 
-    const onKeyUp = (event) => {
+    const onKeyUp = (event: KeyboardEvent) => {
       if (inpChannel.readyState !== "open") return;
 
       inpChannel.send(
@@ -112,7 +102,7 @@ function App() {
     };
   }, [inpChannel]);
 
-  const startApp = async (appId) => {
+  const startApp = async (appId: string) => {
     console.log("Start playing", appId);
 
     const newPc = new RTCPeerConnection({
@@ -131,11 +121,12 @@ function App() {
           setInpChannel(channel);
         };
       } else if (channel.label === "health-check") {
-        let healthCheckIntId;
+        let healthCheckIntId: NodeJS.Timer;
 
         channel.onopen = () => {
           console.log("got health-check datachannel");
           healthCheckIntId = setInterval(() => {
+            //@ts-expect-error
             channel.send({});
           }, 2000);
         };
@@ -144,7 +135,7 @@ function App() {
           clearInterval(healthCheckIntId);
         };
       }
-    };
+    }
 
     newPc.ontrack = (event) => {
       console.log("got track", event);
@@ -166,7 +157,7 @@ function App() {
     newPc.onicecandidate = (event) => {
       const iceCandidate = event.candidate;
 
-      if (iceCandidate) {
+      if (iceCandidate && ws) {
         ws.send(
           JSON.stringify({
             type: "ice-candidate",
@@ -176,15 +167,15 @@ function App() {
       }
     };
 
-    newPc.oniceconnectionstatechange = (event) => {
+    newPc.oniceconnectionstatechange = (event: any) => {
       console.log(event.target.iceConnectionState);
     };
 
     setPc(newPc);
   };
 
-  const selectApp = (appId) => {
-    setSelectedApp(appId);
+  const selectApp = (appId: string) => {
+    // setSelectedApp(appId);
     startApp(appId);
   };
 
@@ -196,19 +187,23 @@ function App() {
     setPc(null);
     setVideoStream(null);
     setInpChannel(null);
-    setSelectedApp("");
+    // setSelectedApp("");
   };
 
   return (
-    <div className="App">
-      {welcoming && <Welcoming />}
-      <AppPlayer
-          videoStream={videoStream}
-          inpChannel={inpChannel}
-          onCloseApp={closeApp}
-        />
-    </div>
-  );
-}
+    <div className={styles.container}>
+      <Head>
+        <title>qwantify</title>
+        <meta name="description" content="Game at the speed of thought" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
 
-export default App;
+      <AppPlayer
+        videoStream={videoStream}
+        inpChannel={inpChannel}
+        onCloseApp={closeApp}
+      />
+
+    </div>
+  )
+}

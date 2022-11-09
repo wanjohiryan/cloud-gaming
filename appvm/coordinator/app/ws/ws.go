@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"log"
 	"net/http"
 	"sync"
 
@@ -35,6 +36,7 @@ var upgrader = websocket.Upgrader{
 func NewWsConnection(w http.ResponseWriter, r *http.Request) (*Connection, error) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		log.Println("Error upgrading ws connection", err)
 		return nil, err
 	}
 
@@ -42,6 +44,7 @@ func NewWsConnection(w http.ResponseWriter, r *http.Request) (*Connection, error
 }
 
 func (c *Connection) Send(v interface{}) error {
+	log.Println("Sending packets through", v)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.conn.WriteJSON(v)
@@ -53,7 +56,8 @@ func (c *Connection) ReadText() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-
+		log.Println("Msg recieved is", rawMsg)
+		
 		if msgType != websocket.TextMessage {
 			continue
 		}
