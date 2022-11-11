@@ -62,7 +62,7 @@ export default function Home() {
         }
       };
     };
-  }, [pc]);
+  }, [pc, ws]);
 
 
   useEffect(() => {
