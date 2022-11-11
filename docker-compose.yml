@@ -15,9 +15,9 @@ services:
     environment:
       - screenwidth=1280
       - screenheight=1024
-      - appname=Tarzan
-      - apppath=/appvm/apps/tarzan_pc/game
-      - appfile=tarzan.exe
+      - appname=John Wick Hex
+      - apppath=/appvm/apps/John-Wick-Hex/
+      - appfile=John Wick Hex.exe
       #- wineoptions=
     volumes:
-      - ./appvm/apps:/appvm/apps #map game files onto the docker container for wine
+      - /home/ec2-user/games:/appvm/apps #map game files onto the docker container for wine
