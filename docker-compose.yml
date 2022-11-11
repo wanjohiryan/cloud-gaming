@@ -13,9 +13,9 @@ services:
     environment:
       - screenwidth=1280
       - screenheight=1024
-      - appname=John Wick Hex
+      - appname='John Wick Hex'
       - apppath=/appvm/apps/John-Wick-Hex
-      - appfile=John Wick Hex.exe
+      - appfile='John Wick Hex.exe'
       #- wineoptions=
     volumes:
       - /home/ec2-user/games:/appvm/apps #map game files onto the docker container for wine
