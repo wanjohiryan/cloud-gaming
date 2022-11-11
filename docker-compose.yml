@@ -5,10 +5,8 @@ services:
     build:
       context: ./appvm
       dockerfile: Dockerfile
-      args:
-        APP_NAME: tarzan_pc #${APP_NAME}
     restart: on-failure
-    container_name: qwantify-tarzan_pc
+    container_name: qwantify-john-wick
     command: supervisord #run supervisord on container run
     ports:
       - 3000:3000
@@ -16,7 +14,7 @@ services:
       - screenwidth=1280
       - screenheight=1024
       - appname=John Wick Hex
-      - apppath=/appvm/apps/John-Wick-Hex/
+      - apppath=/appvm/apps/John-Wick-Hex
       - appfile=John Wick Hex.exe
       #- wineoptions=
     volumes:
