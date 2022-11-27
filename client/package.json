@@ -1,16 +1,16 @@
 {
-  "name": "neko-client",
-  "version": "2.5.0",
-  "description": "Client for neko streaming server",
+  "name": "qwantify-client",
+  "version": "0.0.1",
+  "description": "Client for qwantify streaming server",
   "license": "Apache License 2.0",
-  "author": "Nurdism <https://github.com/nurdism>",
-  "homepage": "https://github.com/m1k1o/neko/client#readme",
+  "author": "Wanjohi <https://github.com/wanjohiryan>",
+  "homepage": "https://qwantify.vercel.com/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/m1k1o/neko.git"
+    "url": "git+https://github.com/wanjohiryan/qwantify.git"
   },
   "bugs": {
-    "url": "https://github.com/m1k1o/neko/issues"
+    "url": "https://github.com/wanjohiryan/qwantify/issues"
   },
   "scripts": {
     "serve": "vue-cli-service serve --mode development",
