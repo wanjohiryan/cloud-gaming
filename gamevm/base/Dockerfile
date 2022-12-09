@@ -32,7 +32,7 @@ RUN go get -v -t -d . && go build -o bin/neko cmd/neko/main.go
 #
 # STAGE 2: CLIENT
 #
-FROM node:14-bullseye-slim as client
+FROM node:18-bullseye-slim as client
 WORKDIR /src
 
 #
@@ -43,7 +43,8 @@ RUN npm install
 #
 # build client
 COPY client/ .
-RUN npm run build
+# TODO: work on prod deployment
+RUN npm run dev 
 
 #
 # STAGE 3: RUNTIME
